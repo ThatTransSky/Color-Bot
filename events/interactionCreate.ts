@@ -1159,10 +1159,112 @@ export async function execute(interaction: Interaction, client: Client2) {
               diffMessage += '```';
               /* Only Additions */
               if (rolesMarkedForRemoval.size === 0 && rolesMarkedForAddition.size !== 0) {
+                let roleType: string = '';
+                const colors = [
+                  // 'Dark Red',
+                  'Light Neon Red',
+                  'Orange',
+                  'Yellow',
+                  // 'Gold',
+                  'Green',
+                  'Dark Green',
+                  'Teal',
+                  // 'Light Blue',
+                  'Blue',
+                  // 'Dark Purple',
+                  'Purple',
+                  'Magenta',
+                  'Light Pink',
+                  // 'Rose',
+                  'Hot Pink',
+                  'Black',
+                  'White',
+                ];
+                if (
+                  ['minor', 'boomer'].includes(rolesMarkedForAddition.first().name.toLowerCase())
+                ) {
+                  roleType = 'age';
+                } else if (
+                  [
+                    'woman lover',
+                    'man lover',
+                    'garlic bread lover',
+                    'any lover',
+                    'unknown lover',
+                  ].includes(rolesMarkedForAddition.first().name.toLowerCase())
+                ) {
+                  roleType = 'sexuality';
+                } else if (
+                  [
+                    'he/him',
+                    'she/her',
+                    'they/them',
+                    'any pronouns',
+                    'ask me for pronouns',
+                  ].includes(rolesMarkedForAddition.first().name.toLowerCase())
+                ) {
+                  roleType = 'pronouns';
+                } else if (colors.includes(rolesMarkedForAddition.first().name.toLowerCase())) {
+                  roleType = 'color';
+                } else if (
+                  [
+                    'all pings',
+                    'smp member',
+                    'poll pings',
+                    'announcement pings',
+                    'vc pings',
+                  ].includes(rolesMarkedForAddition.first().name.toLowerCase())
+                ) {
+                  roleType = 'pings';
+                } else {
+                  console.log(
+                    `the role to remove didn't match any type???? got ${rolesMarkedForAddition
+                      .first()
+                      .name.toLowerCase()}`,
+                  );
+                }
+                const roleTypes = ['age', 'sexuality', 'pronouns', 'color', 'pings'];
+                let previousTypeIndex = roleTypes.indexOf(roleType) - 1;
+                let nextTypeIndex = roleTypes.indexOf(roleType) + 1;
                 buttonRow.setComponents([
+                  (() => {
+                    if (nextTypeIndex === roleTypes.length) nextTypeIndex = 0;
+                    return new ButtonBuilder()
+                      .setCustomId(
+                        stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                          nextTypeIndex,
+                        )}`,
+                      )
+                      .setLabel(
+                        stripIndent`Next: ${roleTypes
+                          .at(nextTypeIndex)
+                          .replace(
+                            roleTypes.at(nextTypeIndex).charAt(0),
+                            roleTypes.at(nextTypeIndex).charAt(0).toUpperCase(),
+                          )}`,
+                      )
+                      .setStyle(ButtonStyle.Success);
+                  })(),
+                  (() => {
+                    return new ButtonBuilder()
+                      .setCustomId(
+                        stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                          previousTypeIndex,
+                        )}`,
+                      )
+                      .setLabel(
+                        stripIndent`Previous: ${roleTypes
+                          .at(previousTypeIndex)
+                          .replace(
+                            roleTypes.at(previousTypeIndex).charAt(0),
+                            roleTypes.at(previousTypeIndex).charAt(0).toUpperCase(),
+                          )}`,
+                      )
+                      .setStyle(ButtonStyle.Primary);
+                  })(),
                   new ButtonBuilder()
                     .setCustomId(
-                      `${mainAction}|${secondaryAction}|selectRoleBasedCategory|${anythingElse[0]}`,
+                      `${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleType}`,
                     )
                     .setLabel('Back to Role Selection')
                     .setStyle(ButtonStyle.Secondary),
