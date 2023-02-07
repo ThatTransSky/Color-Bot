@@ -379,7 +379,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                       )}`,
                     )
                     .setLabel(
-                      stripIndent`Previous: ${roleTypes
+                      stripIndent`Next: ${roleTypes
                         .at(nextTypeIndex)
                         .replace(
                           roleTypes.at(nextTypeIndex).charAt(0),
@@ -507,7 +507,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                       )}`,
                     )
                     .setLabel(
-                      stripIndent`Previous: ${roleTypes
+                      stripIndent`Next: ${roleTypes
                         .at(nextTypeIndex)
                         .replace(
                           roleTypes.at(nextTypeIndex).charAt(0),
@@ -670,7 +670,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                     )}`,
                   )
                   .setLabel(
-                    stripIndent`Previous: ${roleTypes
+                    stripIndent`Next: ${roleTypes
                       .at(nextTypeIndex)
                       .replace(
                         roleTypes.at(nextTypeIndex).charAt(0),
@@ -791,7 +791,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                     )}`,
                   )
                   .setLabel(
-                    stripIndent`Previous: ${roleTypes
+                    stripIndent`Next: ${roleTypes
                       .at(nextTypeIndex)
                       .replace(
                         roleTypes.at(nextTypeIndex).charAt(0),
