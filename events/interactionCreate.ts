@@ -291,7 +291,9 @@ export async function execute(interaction: Interaction, client: Client2) {
               embeds: [selectRolesBasedOnType],
               components: [selectRoleMenu, buttonRow],
             });
-          } else if (stage === 'removeRole') {
+          }
+
+          if (stage === 'removeRole') {
             if (!interaction.inCachedGuild()) return;
             await interaction.deferUpdate();
             const memberRoles = interaction.member.roles;
@@ -364,7 +366,45 @@ export async function execute(interaction: Interaction, client: Client2) {
                 `,
                 )
                 .setTimestamp();
+              const roleTypes = ['age', 'sexuality', 'pronouns', 'color', 'pings'];
+              let previousTypeIndex = roleTypes.indexOf(roleType) - 1;
+              let nextTypeIndex = roleTypes.indexOf(roleType) + 1;
               buttonRow.setComponents([
+                (() => {
+                  if (nextTypeIndex === roleTypes.length) nextTypeIndex = 0;
+                  return new ButtonBuilder()
+                    .setCustomId(
+                      stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                        nextTypeIndex,
+                      )}`,
+                    )
+                    .setLabel(
+                      stripIndent`Previous: ${roleTypes
+                        .at(nextTypeIndex)
+                        .replace(
+                          roleTypes.at(nextTypeIndex).charAt(0),
+                          roleTypes.at(nextTypeIndex).charAt(0).toUpperCase(),
+                        )}`,
+                    )
+                    .setStyle(ButtonStyle.Success);
+                })(),
+                (() => {
+                  return new ButtonBuilder()
+                    .setCustomId(
+                      stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                        previousTypeIndex,
+                      )}`,
+                    )
+                    .setLabel(
+                      stripIndent`Previous: ${roleTypes
+                        .at(previousTypeIndex)
+                        .replace(
+                          roleTypes.at(previousTypeIndex).charAt(0),
+                          roleTypes.at(previousTypeIndex).charAt(0).toUpperCase(),
+                        )}`,
+                    )
+                    .setStyle(ButtonStyle.Primary);
+                })(),
                 new ButtonBuilder()
                   .setCustomId(
                     `${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleType}`,
@@ -385,7 +425,8 @@ export async function execute(interaction: Interaction, client: Client2) {
             } catch (err) {
               return console.error(err);
             }
-          } else if (stage === 'removeRoles') {
+          }
+          if (stage === 'removeRoles') {
             if (!interaction.inCachedGuild()) return;
             await interaction.deferUpdate();
             const memberRoles = interaction.member.roles;
@@ -453,7 +494,45 @@ export async function execute(interaction: Interaction, client: Client2) {
                     .name.toLowerCase()}`,
                 );
               }
+              const roleTypes = ['age', 'sexuality', 'pronouns', 'color', 'pings'];
+              let previousTypeIndex = roleTypes.indexOf(roleType) - 1;
+              let nextTypeIndex = roleTypes.indexOf(roleType) + 1;
               buttonRow.setComponents([
+                (() => {
+                  if (nextTypeIndex === roleTypes.length) nextTypeIndex = 0;
+                  return new ButtonBuilder()
+                    .setCustomId(
+                      stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                        nextTypeIndex,
+                      )}`,
+                    )
+                    .setLabel(
+                      stripIndent`Previous: ${roleTypes
+                        .at(nextTypeIndex)
+                        .replace(
+                          roleTypes.at(nextTypeIndex).charAt(0),
+                          roleTypes.at(nextTypeIndex).charAt(0).toUpperCase(),
+                        )}`,
+                    )
+                    .setStyle(ButtonStyle.Success);
+                })(),
+                (() => {
+                  return new ButtonBuilder()
+                    .setCustomId(
+                      stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                        previousTypeIndex,
+                      )}`,
+                    )
+                    .setLabel(
+                      stripIndent`Previous: ${roleTypes
+                        .at(previousTypeIndex)
+                        .replace(
+                          roleTypes.at(previousTypeIndex).charAt(0),
+                          roleTypes.at(previousTypeIndex).charAt(0).toUpperCase(),
+                        )}`,
+                    )
+                    .setStyle(ButtonStyle.Primary);
+                })(),
                 new ButtonBuilder()
                   .setCustomId(
                     `${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleType}`,
@@ -487,7 +566,8 @@ export async function execute(interaction: Interaction, client: Client2) {
             } catch (err) {
               return console.error(err);
             }
-          } else if (stage === 'updateRoles') {
+          }
+          if (stage === 'updateRoles') {
             if (!interaction.inCachedGuild()) return;
             await interaction.deferUpdate();
             const roleNames = anythingElse[0].trim().split(',');
@@ -577,7 +657,45 @@ export async function execute(interaction: Interaction, client: Client2) {
                   .name.toLowerCase()}`,
               );
             }
+            const roleTypes = ['age', 'sexuality', 'pronouns', 'color', 'pings'];
+            let previousTypeIndex = roleTypes.indexOf(roleType) - 1;
+            let nextTypeIndex = roleTypes.indexOf(roleType) + 1;
             buttonRow.setComponents([
+              (() => {
+                if (nextTypeIndex === roleTypes.length) nextTypeIndex = 0;
+                return new ButtonBuilder()
+                  .setCustomId(
+                    stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                      nextTypeIndex,
+                    )}`,
+                  )
+                  .setLabel(
+                    stripIndent`Previous: ${roleTypes
+                      .at(nextTypeIndex)
+                      .replace(
+                        roleTypes.at(nextTypeIndex).charAt(0),
+                        roleTypes.at(nextTypeIndex).charAt(0).toUpperCase(),
+                      )}`,
+                  )
+                  .setStyle(ButtonStyle.Success);
+              })(),
+              (() => {
+                return new ButtonBuilder()
+                  .setCustomId(
+                    stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                      previousTypeIndex,
+                    )}`,
+                  )
+                  .setLabel(
+                    stripIndent`Previous: ${roleTypes
+                      .at(previousTypeIndex)
+                      .replace(
+                        roleTypes.at(previousTypeIndex).charAt(0),
+                        roleTypes.at(previousTypeIndex).charAt(0).toUpperCase(),
+                      )}`,
+                  )
+                  .setStyle(ButtonStyle.Primary);
+              })(),
               new ButtonBuilder()
                 .setCustomId(`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleType}`)
                 .setLabel('Back to Role Selection')
@@ -593,7 +711,8 @@ export async function execute(interaction: Interaction, client: Client2) {
               embeds: [updatedRolesEmbed],
               components: [buttonRow],
             });
-          } else if (stage === 'onlyAddRoles') {
+          }
+          if (stage === 'onlyAddRoles') {
             if (!interaction.inCachedGuild()) return;
             await interaction.deferUpdate();
             const roleNames = anythingElse[0].trim().split(',');
@@ -659,7 +778,45 @@ export async function execute(interaction: Interaction, client: Client2) {
                   .name.toLowerCase()}`,
               );
             }
+            const roleTypes = ['age', 'sexuality', 'pronouns', 'color', 'pings'];
+            let previousTypeIndex = roleTypes.indexOf(roleType) - 1;
+            let nextTypeIndex = roleTypes.indexOf(roleType) + 1;
             buttonRow.setComponents([
+              (() => {
+                if (nextTypeIndex === roleTypes.length) nextTypeIndex = 0;
+                return new ButtonBuilder()
+                  .setCustomId(
+                    stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                      nextTypeIndex,
+                    )}`,
+                  )
+                  .setLabel(
+                    stripIndent`Previous: ${roleTypes
+                      .at(nextTypeIndex)
+                      .replace(
+                        roleTypes.at(nextTypeIndex).charAt(0),
+                        roleTypes.at(nextTypeIndex).charAt(0).toUpperCase(),
+                      )}`,
+                  )
+                  .setStyle(ButtonStyle.Success);
+              })(),
+              (() => {
+                return new ButtonBuilder()
+                  .setCustomId(
+                    stripIndent`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleTypes.at(
+                      previousTypeIndex,
+                    )}`,
+                  )
+                  .setLabel(
+                    stripIndent`Previous: ${roleTypes
+                      .at(previousTypeIndex)
+                      .replace(
+                        roleTypes.at(previousTypeIndex).charAt(0),
+                        roleTypes.at(previousTypeIndex).charAt(0).toUpperCase(),
+                      )}`,
+                  )
+                  .setStyle(ButtonStyle.Primary);
+              })(),
               new ButtonBuilder()
                 .setCustomId(`${mainAction}|${secondaryAction}|selectRoleBasedCategory|${roleType}`)
                 .setLabel('Back to Role Selection')
