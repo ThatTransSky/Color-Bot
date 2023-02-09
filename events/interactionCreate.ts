@@ -340,7 +340,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                 )
               ) {
                 roleType = 'pronouns';
-              } else if (colors.includes(roleToRemove.name.toLowerCase())) {
+              } else if (colors.includes(roleToRemove.name)) {
                 roleType = 'color';
               } else if (
                 [
@@ -354,7 +354,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                 roleType = 'pings';
               } else {
                 console.log(
-                  `the role to remove didn't match any type???? got ${roleToRemove.name.toLowerCase()}`,
+                  `the role to remove didn't match any type???? got ${roleToRemove.name}`,
                 );
               }
               const roleRemovedEmbed = new EmbedBuilder()
@@ -475,7 +475,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                 )
               ) {
                 roleType = 'pronouns';
-              } else if (colors.includes(rolesToRemove.first().name.toLowerCase())) {
+              } else if (colors.includes(rolesToRemove.first().name)) {
                 roleType = 'color';
               } else if (
                 [
@@ -642,7 +642,7 @@ export async function execute(interaction: Interaction, client: Client2) {
               )
             ) {
               roleType = 'pronouns';
-            } else if (colors.includes(rolesToCheck.first().name.toLowerCase())) {
+            } else if (colors.includes(rolesToCheck.first().name)) {
               roleType = 'color';
             } else if (
               ['all pings', 'smp member', 'poll pings', 'announcement pings', 'vc pings'].includes(
@@ -763,7 +763,7 @@ export async function execute(interaction: Interaction, client: Client2) {
               )
             ) {
               roleType = 'pronouns';
-            } else if (colors.includes(rolesToAdd.first().name.toLowerCase())) {
+            } else if (colors.includes(rolesToAdd.first().name)) {
               roleType = 'color';
             } else if (
               ['all pings', 'smp member', 'poll pings', 'announcement pings', 'vc pings'].includes(
@@ -1204,7 +1204,7 @@ export async function execute(interaction: Interaction, client: Client2) {
                   ].includes(rolesMarkedForAddition.first().name.toLowerCase())
                 ) {
                   roleType = 'pronouns';
-                } else if (colors.includes(rolesMarkedForAddition.first().name.toLowerCase())) {
+                } else if (colors.includes(rolesMarkedForAddition.first().name)) {
                   roleType = 'color';
                 } else if (
                   [
