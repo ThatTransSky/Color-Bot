@@ -127,3 +127,6 @@ dist
 .pnp.*
 
 *.pem
+*.ps1
+*.bat
+*.exe
