@@ -11,61 +11,12 @@ import {
   userMention,
   Collection,
   roleMention,
-  InteractionType,
-  ApplicationCommandType,
-  ComponentType,
 } from 'discord.js';
 import { Client2 } from '../main';
 
 export const name = 'interactionCreate';
 export async function execute(interaction: Interaction, client: Client2) {
   try {
-    console.log(
-      `Interaction is ${(() => {
-        let type: string = 'Unknown';
-        if (interaction.type === InteractionType.ApplicationCommand) {
-          if (interaction.commandType === ApplicationCommandType.ChatInput)
-            type = `Chat Input Command`;
-          else if (interaction.commandType === ApplicationCommandType.Message)
-            type = `Message Context Menu Command`;
-          else if (interaction.commandType === ApplicationCommandType.User)
-            type = `User Context Menu Command`;
-          else
-            console.warn(
-              `Interaction entered the ApplicationCommand type checks but returned false on the command type checks.`,
-            );
-        } else if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
-          return `Autocomplete.`;
-        } else if (interaction.type === InteractionType.MessageComponent) {
-          if (interaction.componentType === ComponentType.Button) type = `Button`;
-          else if (interaction.componentType === ComponentType.ChannelSelect)
-            type = `Channel Select Menu`;
-          else if (interaction.componentType === ComponentType.MentionableSelect)
-            type = `Mentionable Select Menu`;
-          else if (interaction.componentType === ComponentType.RoleSelect)
-            type = `Role Select Menu`;
-          else if (interaction.componentType === ComponentType.StringSelect)
-            type = `String Select Menu`;
-          else if (interaction.componentType === ComponentType.UserSelect)
-            type = `User Select Menu`;
-          else
-            console.warn(
-              `Interaction entered the MessageComponent type checks but returned false on all the Component type checks`,
-            );
-        } else if (interaction.type === InteractionType.ModalSubmit) {
-          if (interaction.isFromMessage()) type = `Modal Submit, Originated from a Message`;
-          else if (interaction.message === null) type = `Modal Submit, Originated from a Command`;
-          else
-            console.warn(
-              `Interaction entered the ModalSubmit type checks but is neither from a Message nor a Command (???).`,
-            );
-        } else
-          console.error(
-            `Interaction failed ALL type checks, might be a problem with the checks' structure.`,
-          );
-        return type;
-      })()}.`,
-    );
     if (interaction.isCommand()) {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -94,301 +45,6 @@ export async function execute(interaction: Interaction, client: Client2) {
         .setLabel('Exit')
         .setStyle(ButtonStyle.Danger),
     ]);
-    const date = new Date();
-    console.log(stripIndent`
-    -----------------------------------
-    ${interaction.user.tag} created an Interaction.
-    Main Action: ${mainAction}
-    Secondary Action: ${secondaryAction}
-    Stage: ${(() => {
-      if (stage !== undefined) return stage;
-      else return `Not applicable.`;
-    })()}
-    Extra Info: ${(() => {
-      if (anythingElse.length !== 0) return anythingElse;
-      else return `None provided.`;
-    })()}
-
-    Timestamp: ${date.getMonth()}/${date.getDate()}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.${date.getMilliseconds()}
-    -----------------------------------
-    `);
-    const exitButton = new ButtonBuilder()
-      .setCustomId(`${mainAction}|exit`)
-      .setLabel('Exit')
-      .setStyle(ButtonStyle.Danger);
-    // customId === `roles`
-    if (mainAction === 'roles') {
-      if (secondaryAction === 'exit') {
-        await interaction.deferUpdate();
-        return await interaction.deleteReply();
-      }
-      // customId = `roles|userRoles`
-      if (secondaryAction === 'userRoles') {
-        // customId = `roles|userRoles|startMessage`
-        if (stage === 'startMessage') {
-          if (
-            interaction.type !== InteractionType.MessageComponent ||
-            interaction.componentType !== ComponentType.Button
-          )
-            throw new Error(`UnexpectedInteractionType`, { cause: stage });
-          if (anythingElse.includes('back')) await interaction.deferUpdate();
-          else await interaction.deferReply();
-          const selectRoleTypeEmbed = new EmbedBuilder()
-            .setColor('Random')
-            .setTitle('User Roles')
-            .setDescription(
-              stripIndent`
-            Welcome ${userMention(interaction.user.id)}!
-
-            Please select the category of roles you'd like to edit:
-            `,
-            )
-            .setTimestamp();
-          const roleCategoryMenu = new StringSelectMenuBuilder()
-            .setCustomId(`${mainAction}|${secondaryAction}|selectedCategory`)
-            .setOptions([
-              {
-                label: 'Age',
-                description: 'Your age group role.',
-                value: 'age',
-              },
-              {
-                label: 'Sexuality',
-                description: 'The role that best describes your sexuality.',
-                value: 'sexuality',
-              },
-              {
-                label: 'Pronouns',
-                description: 'The role(s) that fits your pronouns.',
-                value: 'pronouns',
-              },
-              {
-                label: 'Color Role',
-                description: 'Your color role.',
-                value: 'color',
-              },
-              {
-                label: 'Pings',
-                description: 'When would you rather be pinged or not.',
-                value: 'pings',
-              },
-            ])
-            .setPlaceholder(`Select a category:`);
-          return await interaction.editReply({
-            content: '',
-            embeds: [selectRoleTypeEmbed],
-            components: [
-              new ActionRowBuilder<StringSelectMenuBuilder>().setComponents([roleCategoryMenu]),
-              new ActionRowBuilder<ButtonBuilder>().setComponents([exitButton]),
-            ],
-          });
-        }
-        // customId = `roles|userRoles|selectedCategory`
-        if (stage === 'selectedCategory') {
-          let selectedRoleType = '';
-          if (interaction.type === InteractionType.MessageComponent) {
-            if (interaction.componentType === ComponentType.Button)
-              selectedRoleType = anythingElse[0];
-            else if (interaction.componentType === ComponentType.StringSelect)
-              selectedRoleType = interaction.values[0];
-          } else throw new Error(``);
-          const backToCategoryButton = new ButtonBuilder()
-            .setCustomId(`${mainAction}|${secondaryAction}|startMessage|back`)
-            .setLabel('Change Category')
-            .setStyle(ButtonStyle.Secondary);
-          await interaction.deferUpdate();
-          const selectRolesBasedOnTypeEmbed = new EmbedBuilder()
-            .setColor('Random')
-            .setTitle(
-              selectedRoleType.replace(
-                selectedRoleType.charAt(0),
-                selectedRoleType.charAt(0).toUpperCase(),
-              ),
-            ).setDescription(stripIndent`
-            You have selected ${selectedRoleType.replace(
-              selectedRoleType.charAt(0),
-              selectedRoleType.charAt(0).toUpperCase(),
-            )}!
-
-            Use the menu below to select the role${(() => {
-              if (selectedRoleType === 'pronouns' || selectedRoleType === 'pings') return 's';
-              else return '';
-            })()} you would like to add / remove:
-            ${(() => {
-              if (selectedRoleType === 'pronouns' || selectedRoleType === 'pings')
-                return '(*In this category, you can select multiple roles. When you are done selecting, click out of the menu to finalize your decision.*)';
-              else return '';
-            })()}
-            `);
-
-          const selectRoleMenu = new StringSelectMenuBuilder().setCustomId(
-            `${mainAction}|${secondaryAction}|selectedRoles|${selectedRoleType}`,
-          );
-          if (selectedRoleType === 'age') {
-            selectRoleMenu
-              .setOptions([
-                {
-                  label: '18+',
-                  description: 'You are over the age of 18.',
-                  value: 'boomer',
-                },
-                {
-                  label: 'Minor',
-                  description: `You are below the age of 18. (but over 13, @discord relax)`,
-                  value: 'minor',
-                },
-              ])
-              .setPlaceholder('Select One Role.');
-          } else if (selectedRoleType === 'sexuality') {
-            selectRoleMenu
-              .addOptions([
-                {
-                  label: 'I love woman.',
-                  value: 'woman lover',
-                },
-                {
-                  label: 'I love man.',
-                  value: 'man lover',
-                },
-                {
-                  label: 'I love all genders.',
-                  value: 'any lover',
-                },
-                {
-                  label: `I don't do romance.`,
-                  value: 'garlic bread lover',
-                },
-                {
-                  label: `I don't know / would rather not say.`,
-                  value: 'unknown lover',
-                },
-              ])
-              .setPlaceholder('Select One Role.');
-          } else if (selectedRoleType === 'pronouns') {
-            selectRoleMenu
-              .addOptions([
-                {
-                  label: 'He/Him',
-                  value: 'he/him',
-                },
-                {
-                  label: 'She/Her',
-                  value: 'she/her',
-                },
-                {
-                  label: 'They/Them',
-                  value: 'they/them',
-                },
-                {
-                  label: 'Any',
-                  value: 'any pronouns',
-                },
-                {
-                  label: 'Other/Ask',
-                  value: 'ask me for pronouns',
-                },
-              ])
-              .setMinValues(1)
-              .setMaxValues(5)
-              .setPlaceholder('Select Roles.');
-          } else if (selectedRoleType === 'color') {
-            const colorOptions: APISelectMenuOption[] = [];
-            const colors = [
-              // 'Dark Red',
-              'Light Neon Red',
-              'Orange',
-              'Yellow',
-              // 'Gold',
-              'Green',
-              'Dark Green',
-              'Teal',
-              // 'Light Blue',
-              'Blue',
-              // 'Dark Purple',
-              'Purple',
-              'Magenta',
-              'Light Pink',
-              // 'Rose',
-              'Hot Pink',
-              'Black',
-              'White',
-            ];
-            colors.forEach((color) =>
-              colorOptions.push({
-                label: color,
-                value: color.toLowerCase(),
-              }),
-            );
-            selectRoleMenu.addOptions(colorOptions).setPlaceholder('Select a Color');
-          } else if (selectedRoleType === 'pings') {
-            selectRoleMenu
-              .addOptions([
-                {
-                  label: 'All Pings',
-                  description: 'You will be pinged whenever any activity / announcement is made.',
-                  value: 'all pings',
-                },
-                {
-                  label: 'SMP Pings',
-                  description:
-                    'You will be pinged whenever any SMP-Related activity / announcement is made.',
-                  value: 'smp member',
-                },
-                // {
-                //   label: 'Game Pings',
-                //   description:
-                //     'You will be pinged whenever someone is looking for someone to play with.',
-                //   value: 'game pings',
-                // },
-                {
-                  label: 'Poll Pings',
-                  description: `You will be pinged whenever there's a poll running.`,
-                  value: 'poll pings',
-                },
-                {
-                  label: 'Announcement Pings',
-                  description: 'You will be pinged whenever a non-specific announcement is made.',
-                  value: 'announcement pings',
-                },
-                {
-                  label: 'VC Pings',
-                  description:
-                    'You will be pinged whenever a member is looking for someone to VC with.',
-                  value: 'vc pings',
-                },
-              ])
-              .setMinValues(1)
-              .setMaxValues(5);
-          } else {
-            console.log(`Role Type Check failed at stage ${stage}`);
-          }
-          return await interaction.editReply({
-            content: '',
-            embeds: [selectRolesBasedOnTypeEmbed],
-            components: [
-              new ActionRowBuilder<StringSelectMenuBuilder>().setComponents([selectRoleMenu]),
-              new ActionRowBuilder<ButtonBuilder>().setComponents([
-                backToCategoryButton,
-                exitButton,
-              ]),
-            ],
-          });
-        }
-        // customId = `roles|userRoles|selectedRoles|${selectedRoleType}
-        if (stage === `selectedRoles`) {
-          if (
-            interaction.type === InteractionType.MessageComponent &&
-            interaction.componentType === ComponentType.StringSelect
-          ) {
-            const selectedRoleName = interaction.values[0];
-          }
-          const selectedRoleType = anythingElse[0];
-        }
-      }
-    }
-
-    /*                     OLD CODE AHEAD                        */
-    console.log('Interaction reached the old handler code, make sure to handle it before hand.');
     if (interaction.isButton()) {
       if (secondaryAction === 'exit') {
         await interaction.deferUpdate();
@@ -413,7 +69,8 @@ export async function execute(interaction: Interaction, client: Client2) {
             Please select the category of roles you'd like to edit:
             `,
               )
-              .setTimestamp();
+              .setTimestamp()
+              .setColor('LuminousVividPink');
             const roleCategoryMenu = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents([
               new StringSelectMenuBuilder()
                 .setCustomId(`${mainAction}|${secondaryAction}|selectRoleBasedCategory`)
@@ -451,8 +108,7 @@ export async function execute(interaction: Interaction, client: Client2) {
               embeds: [selectRoleTypeEmbed],
               components: [roleCategoryMenu, buttonRow],
             });
-          }
-          if (stage === 'selectRoleBasedCategory') {
+          } else if (stage === 'selectRoleBasedCategory') {
             buttonRow.setComponents([
               new ButtonBuilder()
                 .setCustomId(`${mainAction}|${secondaryAction}|startMessage|back`)
@@ -636,6 +292,7 @@ export async function execute(interaction: Interaction, client: Client2) {
               components: [selectRoleMenu, buttonRow],
             });
           }
+
           if (stage === 'removeRole') {
             if (!interaction.inCachedGuild()) return;
             await interaction.deferUpdate();
