@@ -3,7 +3,7 @@
     "node": true,
     "commonjs": false
   },
-  "extends": ["eslint:recommended", "prettier"],
+  "extends": ["prettier"],
   "parserOptions": {
     "ecmaFeatures": {
       "jsx": false
@@ -13,6 +13,11 @@
   },
   "plugins": ["prettier"],
   "rules": {
-    "prettier/prettier": ["warn"]
+    "prettier/prettier": [
+      "warn",
+      {
+        "endOfLine": "auto"
+      }
+    ]
   }
 }
