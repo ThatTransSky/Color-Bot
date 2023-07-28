@@ -7,7 +7,8 @@
   "scripts": {
     "watch": "tsc --outDir src -w",
     "start": "node .",
-    "prestart": "tsc --outDir src && cat ./localData/.env > ./src/localData/.env"
+    "prestart": "tsc --outDir src && cat ./localData/.env > ./src/localData/.env",
+    "build": "tsc --outDir src"
   },
   "author": "Sky",
   "license": "GNU AGPL v3",
