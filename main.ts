@@ -18,7 +18,7 @@ let client = new Client({
     GatewayIntentBits.GuildMembers,
   ],
 });
-config();
+config({ path: './localData/.env' });
 export type Client2 = Client & { commands: Collection<string, CommandStructure> };
 const client2 = client as Client2;
 (async () => {

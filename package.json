@@ -2,20 +2,18 @@
   "name": "coding-stuff",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/main.js",
+  "main": "src/main.js",
   "type": "module",
   "scripts": {
-    "build": "tsc --outDir dist",
-    "build:watch": "tsc --outDir dist -w",
-    "start": "cd dist && node main.js",
-    "prestart": "tsc --outDir dist"
+    "watch": "tsc --outDir src -w",
+    "start": "node .",
+    "prestart": "tsc --outDir src && cat ./localData/.env > ./src/localData/.env"
   },
   "author": "Sky",
   "license": "GNU AGPL v3",
   "dependencies": {
     "common-tags": "^1.8.2",
     "discord.js": "^14.7.1",
-    "discordx": "^11.5.2",
     "dotenv": "^16.0.2",
     "json-stringify-pretty-compact": "^3.0.0"
   },
