@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc --outDir dist",
     "build:watch": "tsc --outDir dist -w",
-    "start": "cd dist && node main.js"
+    "start": "cd dist && node main.js",
+    "prestart": "tsc --outDir dist"
   },
   "author": "Sky",
   "license": "GNU AGPL v3",
