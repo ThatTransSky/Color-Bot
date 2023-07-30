@@ -1,56 +1,42 @@
-import { ActivityType, Client, Collection, GatewayIntentBits } from 'discord.js';
-// import { Client } from 'discordx';
-import { config } from 'dotenv';
-import * as fs from 'fs';
-import { CommandStructure } from './classes/CommandStructure';
-let client = new Client({
-  presence: {
-    status: 'online',
-    activities: [{ type: ActivityType.Watching, name: 'you in your sleep 👻' }],
-  },
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    // GatewayIntentBits.MessageContent,
-    // GatewayIntentBits.GuildMessageReactions,
-    // GatewayIntentBits.GuildPresences,
-    // GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildMembers,
-  ],
-});
-config({ path: './localData/.env' });
-export type Client2 = Client & { commands: Collection<string, CommandStructure> };
-const client2 = client as Client2;
-(async () => {
-  /*
-TODO: Put the command collection and event handler in separate files to tidy up the code
-*/
+import {
+	ActivityType,
+	Client,
+	Collection,
+	GatewayIntentBits,
+} from "discord.js"; // Discord Imports
+import { config } from "dotenv"; // DotEnv Imports
+import { CommandStructure } from "./classes/CommandStructure"; // Purely for TS
+import { loadCommands, loadEvents } from "./helpers/loaders.js"; // Command and Event Loaders
+export type Client2 = Client & {
+	commands: Collection<string, CommandStructure>;
+};
+export async function main(callback?: (client: Client2) => void) {
+	let client = new Client({
+		presence: {
+			status: "online",
+			activities: [
+				{ type: ActivityType.Watching, name: "you in your sleep 👻" },
+			],
+		},
+		intents: [
+			GatewayIntentBits.Guilds,
+			GatewayIntentBits.GuildMessages,
+			// GatewayIntentBits.MessageContent,
+			// GatewayIntentBits.GuildMessageReactions,
+			// GatewayIntentBits.GuildPresences,
+			// GatewayIntentBits.GuildModeration,
+			GatewayIntentBits.GuildMembers,
+		],
+	});
+	config({ path: "./localData/.env" });
+	const client2 = client as Client2;
 
-  const commandFiles = fs.readdirSync('./commands').filter((file) => file.endsWith('.js'));
+	loadCommands(client2, () => {
+		loadEvents(client2, () => {
+			client2.login(process.env.TOKEN);
+			if (callback !== undefined) callback(client2);
+		});
+	});
+}
 
-  const commands: any[] = [];
-
-  client2.commands = new Collection<string, CommandStructure>();
-
-  for (const file of commandFiles) {
-    const command = (await import(`./commands/${file}`)) as CommandStructure;
-    // console.log(command);
-    commands.push(command.data);
-    client2.commands.set(command.data.name, command);
-  }
-
-  // Event Handler
-
-  const eventFiles = fs.readdirSync('./events').filter((file) => file.endsWith('.js'));
-
-  for (const file of eventFiles) {
-    const event = await import(`./events/${file}`);
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args, commands)); // Runs the "run-once" events.
-    } else {
-      client.on(event.name, (...args) => event.execute(...args, client)); // Runs the rest of the events.
-    }
-  }
-
-  client.login(process.env.TOKEN);
-})();
+main();
