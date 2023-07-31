@@ -7,10 +7,12 @@ import {
 import { config } from "dotenv"; // DotEnv Imports
 import { CommandStructure } from "./classes/CommandStructure"; // Purely for TS
 import { loadCommands, loadEvents } from "./helpers/loaders.js"; // Command and Event Loaders
+import { readdirSync } from "fs";
 export type Client2 = Client & {
 	commands: Collection<string, CommandStructure>;
 };
 export async function main(callback?: (client: Client2) => void) {
+	// console.log("T");
 	let client = new Client({
 		presence: {
 			status: "online",
@@ -28,7 +30,14 @@ export async function main(callback?: (client: Client2) => void) {
 			GatewayIntentBits.GuildMembers,
 		],
 	});
-	config({ path: "./localData/.env" });
+	const envPath =
+		".\\src\\" +
+		readdirSync("./src", {
+			recursive: true,
+			encoding: "utf-8",
+		}).find((file) => file.endsWith(".env"));
+	console.log(envPath);
+	config({ path: envPath });
 	const client2 = client as Client2;
 
 	loadCommands(client2, () => {

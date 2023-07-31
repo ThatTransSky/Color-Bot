@@ -8,7 +8,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"moduleResolution": "Node", // required
 		"esModuleInterop": true, // required
-		"outDir": "dist"
+		"outDir": "out"
 		// "allowImportingTsExtensions": true
 	},
 	"ts-node": {
