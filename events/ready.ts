@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { ClientWithCommands } from '../main';
 import { exit } from 'process';
 import { log } from '../helpers/utils.js';
+import { Constants } from '../helpers/constants.js';
 config(); // required for .env
 
 export const data = {
@@ -26,7 +27,7 @@ export async function execute(client: ClientWithCommands) {
 
     log({ level: 'log' }, `Logged in as ${client.user.tag}!`);
     const CLIENT_ID = process.env.CLIENT_ID as string;
-    const GUILD_ID = process.env.GUILD_ID as string;
+    const GUILD_ID = Constants.GUILD_ID as string;
     const rest = new REST({
         version: '10',
     }).setToken(process.env.TOKEN as string);
@@ -48,4 +49,6 @@ export async function execute(client: ClientWithCommands) {
             }`,
         );
     }
+
+    Constants.Roles.verifyStoredRoles(client);
 }

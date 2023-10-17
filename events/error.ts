@@ -1,7 +1,7 @@
-import { log } from "../helpers/utils.js";
+import { log } from '../helpers/utils.js';
 
-export const data = { name: "error" };
+export const data = { name: 'error' };
 
 export async function execute(err: Error) {
-    log({ level: "error" }, err);
+    log({ level: 'error' }, err);
 }

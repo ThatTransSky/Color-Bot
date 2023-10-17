@@ -1,3 +1,4 @@
+import 'tsconfig-paths/register';
 import {
     ActivityType,
     Client,
@@ -5,11 +6,12 @@ import {
     GatewayIntentBits,
 } from 'discord.js'; // Discord Imports
 import { config } from 'dotenv'; // DotEnv Imports
-import { CommandStructure } from './classes/CommandStructure'; // Purely for TS
+import { CommandStructure } from './classes/CommandStructure.js'; // Purely for TS
 import { loadCommands, loadEvents } from './helpers/loaders.js'; // Command and Event Loaders
 import { log } from './helpers/utils.js'; // Awesome log function 😎
 import { createInterface } from 'readline';
 import { stdin, stdout } from 'process';
+import { Constants } from './helpers/constants.js';
 export type ClientWithCommands = Client & {
     commands: Collection<string, CommandStructure>;
 };

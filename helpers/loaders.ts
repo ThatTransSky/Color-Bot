@@ -63,7 +63,6 @@ async function getCommandFiles(cb: (files: string[]) => void) {
                     'ERROR: No commands were found!',
                 );
             }
-
             commandFiles.forEach(
                 (file, i) => (commandFiles[i] = '../commands/' + file),
             );

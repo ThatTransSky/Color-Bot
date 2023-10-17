@@ -1,19 +1,22 @@
 {
-	"compilerOptions": {
-		"module": "ESNext", // required
-		"target": "ESNext", // required
-		"emitDecoratorMetadata": false, // required
-		"experimentalDecorators": true, // required
-		"importHelpers": true, // required
-		"forceConsistentCasingInFileNames": true,
-		"moduleResolution": "Node", // required
-		"esModuleInterop": true, // required
-		"outDir": "out"
-		// "allowImportingTsExtensions": true
-	},
-	"ts-node": {
-		"esm": true,
-		"experimentalSpecifierResolution": "node"
-	},
-	"exclude": ["node_modules"]
+    "compilerOptions": {
+        "module": "ESNext", // required
+        "emitDecoratorMetadata": false, // required
+        "experimentalDecorators": true, // required
+        "importHelpers": true, // required
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "Node", // required
+        "esModuleInterop": true, // required
+        "outDir": "out",
+        // "allowImportingTsExtensions": true,
+        "noEmit": true
+    },
+    "include": ["./**/*.ts"],
+    "ts-node": {
+        "transpileOnly": true,
+        "esm": true,
+        "experimentalSpecifierResolution": "node",
+        "require": ["tsconfig-paths/register"]
+    },
+    "exclude": ["node_modules"]
 }

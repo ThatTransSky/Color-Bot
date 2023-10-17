@@ -1,6 +1,7 @@
 import ch from 'chalk';
 import { debugEnabled } from '../main.js';
 import { Interaction } from 'discord.js';
+import { CustomIdObj } from './componentBuilders.js';
 
 export function jsonParse<T>(jsonString: string): T {
     return <T>JSON.parse(jsonString);
@@ -60,4 +61,22 @@ export function uppercaseWord(string: string) {
         string.charAt(0).toUpperCase(),
         string.substring(1),
     );
+}
+
+export function buildCustomId(obj: CustomIdObj) {
+    // mainAction|secondaryAction|stage|anythingElse
+    const { anythingElse, mainAction, secondaryAction, stage } = obj;
+    return `${mainAction}${
+        secondaryAction
+            ? `|${secondaryAction}${
+                  stage
+                      ? `|${stage}${
+                            anythingElse.length !== 0
+                                ? `|${anythingElse.join('|')}`
+                                : ''
+                        }`
+                      : ''
+              }`
+            : ''
+    }`;
 }
