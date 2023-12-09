@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 import { ClientWithCommands } from '../main';
 import { exit } from 'process';
 import { log } from '../helpers/utils.js';
-import { Constants } from '../helpers/constants.js';
+import { Globals } from '../helpers/globals.js';
 config(); // required for .env
 
 export const data = {
@@ -25,9 +25,9 @@ export async function execute(client: ClientWithCommands) {
         exit(1);
     }
 
-    log({ level: 'log' }, `Logged in as ${client.user.tag}!`);
+    log('log', `Logged in as ${client.user.tag}!`);
     const CLIENT_ID = process.env.CLIENT_ID as string;
-    const GUILD_ID = Constants.GUILD_ID as string;
+    const GUILD_ID = Globals.GUILD_ID as string;
     const rest = new REST({
         version: '10',
     }).setToken(process.env.TOKEN as string);
@@ -50,5 +50,7 @@ export async function execute(client: ClientWithCommands) {
         );
     }
 
-    Constants.Roles.verifyStoredRoles(client);
+    Globals.Roles.verifyStoredRoles(client);
+    if (Globals.devMode)
+        log('warn', 'Dev Mode™ enabled! Limiting access to dev team only...');
 }

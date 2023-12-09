@@ -1,4 +1,3 @@
-import 'tsconfig-paths/register';
 import {
     ActivityType,
     Client,
@@ -11,7 +10,6 @@ import { loadCommands, loadEvents } from './helpers/loaders.js'; // Command and 
 import { log } from './helpers/utils.js'; // Awesome log function 😎
 import { createInterface } from 'readline';
 import { stdin, stdout } from 'process';
-import { Constants } from './helpers/constants.js';
 export type ClientWithCommands = Client & {
     commands: Collection<string, CommandStructure>;
 };
@@ -79,4 +77,12 @@ async function beforeStart(mainFunc: (...args: any[]) => any, ...args: any[]) {
         ac.abort();
     }, 10000);
 }
+
+/**
+ ** The functions below control to purpose of running `npm start`
+ ** beforeStart(main): Regular start, loads the bot
+ ** testTime(...args): Test start, used to test something without starting the bot.
+ **                    (usually to test a class)
+ */
 beforeStart(main);
+// testTime();

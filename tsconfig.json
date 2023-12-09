@@ -15,8 +15,8 @@
     "ts-node": {
         "transpileOnly": true,
         "esm": true,
-        "experimentalSpecifierResolution": "node",
-        "require": ["tsconfig-paths/register"]
+        "experimentalSpecifierResolution": "node"
+        // "require": ["tsconfig-paths/register"]
     },
     "exclude": ["node_modules"]
 }

@@ -1,13 +1,13 @@
 import { Role } from 'discord.js';
-import { Constants } from '../helpers/constants.js';
+import { Globals } from '../helpers/globals.js';
 
 export const data = {
     name: 'roleUpdate',
 };
 
 export async function execute(oldRole: Role, updatedRole: Role) {
-    const storedRole = Constants.Roles.getRole({ id: oldRole.id });
+    const storedRole = Globals.Roles.getRole({ id: oldRole.id });
     if (storedRole !== undefined) {
-        return Constants.Roles.updateRole(storedRole, updatedRole);
+        return Globals.Roles.updateRole(storedRole, updatedRole);
     }
 }

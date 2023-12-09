@@ -1,33 +1,31 @@
 import { stripIndent } from 'common-tags';
-import { jsonParse, jsonString, log, uppercaseWord } from './utils.js';
+import { jsonParse, jsonString, log, uppercaseWord } from '../helpers/utils.js';
 import { readFileSync, writeFile } from 'fs';
 import { Client, Role } from 'discord.js';
 import { EventEmitter } from 'events';
-import { getRoleById, getRoleByName } from './discordHelpers.js';
+import { getRoleById, getRoleByName } from '../helpers/discordHelpers.js';
+import { newEmbed } from '../helpers/componentBuilders.js';
 
 interface RoleOptions {
     value: string;
     description?: string;
     label: string;
 }
-
 interface StoredRole extends RoleOptions {
     type: string;
     id?: string;
 }
-
 interface RoleType {
     value: string;
     description?: string;
     label: string;
 }
-
 interface StoredType extends RoleType {
     multiRoleType?: boolean;
     roles?: StoredRole[];
 }
 
-class RoleConstants {
+export class RoleConstants {
     public multiRoleTypeNames: string[];
     public types: StoredType[];
     constructor() {
@@ -45,7 +43,10 @@ class RoleConstants {
         }
     }
 
-    public selectRolesEmbedDescription = (roleType: string) => stripIndent`
+    public selectRolesEmbed = (roleType: string) =>
+        newEmbed(
+            'User Roles',
+            stripIndent`
     You have selected ${uppercaseWord(roleType)}!
 
     Use the menu below to select the role(s) you would like to add / remove:
@@ -53,7 +54,10 @@ class RoleConstants {
         if (this.multiRoleTypeNames.includes(roleType.toLowerCase())) {
             return '(*In this category, you can select multiple roles. When you are done selecting, click out of the menu to finalize your decision.*)';
         } else return '';
-    })()}`;
+    })()}`,
+            true,
+            'Random',
+        );
 
     public getType(typeName: string): StoredType {
         return this.types.find(
@@ -106,10 +110,7 @@ class RoleConstants {
         ev.once('ready', () => {
             this.types.forEach((type) => {
                 if (type.roles.length === 0) {
-                    log(
-                        { level: 'warn' },
-                        `${type.label} exists but has no roles`,
-                    );
+                    log('warn', `${type.label} exists but has no roles`);
                     return;
                 }
                 const { roles } = type;
@@ -142,12 +143,28 @@ class RoleConstants {
         return this.types.find(findType)?.roles.find(findRole);
     }
 
-    public convertRoleToOptions(role: StoredRole): RoleOptions {
+    public getRolesFromType(typeName: string, asOptions: true): RoleOptions[];
+    public getRolesFromType(typeName: string, asOptions: false): StoredRole[];
+    public getRolesFromType(
+        typeName: string,
+        asOptions?: boolean,
+    ): StoredRole[] | RoleOptions[] {
+        const type = this.getType(typeName);
+        if (asOptions) {
+            return type.roles.map((storedRole) =>
+                this.convertRoleToOptions(storedRole),
+            );
+        } else return type.roles;
+    }
+
+    public convertRoleToOptions(storedRole: StoredRole): RoleOptions {
         return {
-            label: role.label,
-            value: role.value,
+            label: storedRole.label,
+            value: storedRole.id,
             description:
-                role.description !== undefined ? role.description : undefined,
+                storedRole.description !== undefined
+                    ? storedRole.description
+                    : undefined,
         };
     }
 
@@ -169,7 +186,7 @@ class RoleConstants {
         );
         if (roleIndex === -1) {
             return log(
-                { level: 'error' },
+                'error',
                 stripIndent`
                 removeRole - role doesn't exist?
                 id: ${storedRole.id ?? undefined}
@@ -227,11 +244,3 @@ class RoleConstants {
         );
     }
 }
-
-export class Constants {
-    public static Roles = new RoleConstants();
-    public static GUILD_ID = '1015742449471201320';
-    public static CREATOR_ID = '232936279384260609';
-}
-
-Constants.Roles;

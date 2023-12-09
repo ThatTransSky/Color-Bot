@@ -8,26 +8,23 @@ export function jsonParse<T>(jsonString: string): T {
 }
 
 export function jsonString(jsonObject: any, pretty = false): string {
-    if (pretty) return JSON.stringify(jsonObject, null, 2);
-    else return JSON.stringify(jsonObject);
+    return pretty
+        ? JSON.stringify(jsonObject, null, 4)
+        : JSON.stringify(jsonObject);
 }
 
-interface LogOptions {
-    level?: 'error' | 'warn' | 'debug' | 'log';
-}
+type LogLevels = 'error' | 'warn' | 'debug' | 'log';
 
-export function log(options?: LogOptions, ...items: any[]): void {
-    const logLevel =
-        options?.level !== undefined && options?.level !== null
-            ? options.level
-            : 'log';
+export function log(level?: LogLevels, ...items: any[]): void {
+    const logLevel = level !== undefined && level !== null ? level : 'log';
     switch (logLevel) {
         case 'error':
             console.log(ch.redBright(items.join('')));
             break;
         case 'debug':
-            if (debugEnabled)
-                console.log(ch.whiteBright(ch.bgGray(items.join(''))));
+            debugEnabled
+                ? console.log(ch.whiteBright(ch.bgGray(items.join(''))))
+                : '';
             break;
         case 'warn':
             console.log(ch.yellowBright(items.join('')));
@@ -53,7 +50,7 @@ export function interactionTypeToString(
     else if (interaction.isButton()) return 'Button Interaction';
     else if (interaction.isModalSubmit()) return 'Modal Submit Interaction';
     else if (interaction.isAutocomplete()) return 'AutoComplete Interaction';
-    else log({ level: 'error' }, `Unknown Interaction, got ${interaction}`);
+    else log('error', `Unknown Interaction, got ${interaction}`);
 }
 
 export function uppercaseWord(string: string) {

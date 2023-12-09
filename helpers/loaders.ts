@@ -18,7 +18,7 @@ export async function loadCommands(
             client.commands.set(command.data.name, command);
         }
         if (commands.length === 0 || client.commands.at(0) === undefined) {
-            log({ level: 'warn' }, 'WARN: No commands were loaded.');
+            log('warn', 'WARN: No commands were loaded.');
         }
         loaded();
     });
@@ -40,7 +40,7 @@ export async function loadEvents(
         }
 
         if (events.length === 0) {
-            log({ level: 'warn' }, 'WARN: No events were loaded.');
+            log('warn', 'WARN: No events were loaded.');
         }
         loaded();
     });
@@ -52,16 +52,13 @@ async function getCommandFiles(cb: (files: string[]) => void) {
         { encoding: 'utf-8', recursive: true },
         (err, files) => {
             if (err !== null && err !== undefined) {
-                log({ level: 'error' }, err);
+                log('error', err);
                 throw err;
             }
 
             const commandFiles = files.filter((file) => file.endsWith('.ts'));
             if (commandFiles.length === 0) {
-                return log(
-                    { level: 'error' },
-                    'ERROR: No commands were found!',
-                );
+                return log('error', 'ERROR: No commands were found!');
             }
             commandFiles.forEach(
                 (file, i) => (commandFiles[i] = '../commands/' + file),
@@ -75,13 +72,13 @@ async function getCommandFiles(cb: (files: string[]) => void) {
 async function getEventFiles(cb: (files: string[]) => void) {
     readdir('events', { encoding: 'utf-8', recursive: true }, (err, files) => {
         if (err !== null && err !== undefined) {
-            log({ level: 'error' }, err);
+            log('error', err);
             throw err;
         }
 
         const eventFiles = files.filter((file) => file.endsWith('.ts'));
         if (eventFiles.length === 0) {
-            return log({ level: 'error' }, 'ERROR: No events were found!');
+            return log('error', 'ERROR: No events were found!');
         }
 
         eventFiles.forEach((file, i) => (eventFiles[i] = '../events/' + file));

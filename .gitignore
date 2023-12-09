@@ -132,4 +132,4 @@ out
 *.ps1
 *.bat
 *.exe
-localData/
+localData/*
