@@ -7,9 +7,10 @@ import {
 import { config } from 'dotenv'; // DotEnv Imports
 import { CommandStructure } from './classes/CommandStructure.js'; // Purely for TS
 import { loadCommands, loadEvents } from './helpers/loaders.js'; // Command and Event Loaders
-import { log } from './helpers/utils.js'; // Awesome log function 😎
+import { LocalUtils } from './helpers/utils.js'; // Awesome log function 😎
 import { createInterface } from 'readline';
 import { stdin, stdout } from 'process';
+import { testTime } from './localData/test.js';
 export type ClientWithCommands = Client & {
     commands: Collection<string, CommandStructure>;
 };
@@ -32,7 +33,7 @@ export async function main(callback?: (client: ClientWithCommands) => void) {
         ],
     });
     const client2 = client as ClientWithCommands;
-    log(undefined, 'Loading client commands and events...');
+    LocalUtils.log(undefined, 'Loading client commands and events...');
     loadCommands(client2, () => {
         loadEvents(client2, () => {
             client2.login(process.env.TOKEN);
@@ -42,7 +43,10 @@ export async function main(callback?: (client: ClientWithCommands) => void) {
 }
 
 export let debugEnabled = false;
-async function beforeStart(mainFunc: (...args: any[]) => any, ...args: any[]) {
+async function shouldEnableDebug(
+    mainFunc: (...args: any[]) => any,
+    ...args: any[]
+) {
     const envPath = './localData/.env';
     config({ path: envPath });
     if (process.env.ENV.toLowerCase() === 'production') {
@@ -56,7 +60,7 @@ async function beforeStart(mainFunc: (...args: any[]) => any, ...args: any[]) {
         output: stdout,
     });
     const abortCallback = () => {
-        log(undefined, '\nTimed out, defaulting to disabled.');
+        LocalUtils.log(undefined, '\nTimed out, defaulting to disabled.');
         rl.close();
         mainFunc(...args);
     };
@@ -80,9 +84,9 @@ async function beforeStart(mainFunc: (...args: any[]) => any, ...args: any[]) {
 
 /**
  ** The functions below control to purpose of running `npm start`
- ** beforeStart(main): Regular start, loads the bot
- ** testTime(...args): Test start, used to test something without starting the bot.
+ ** shouldEnableDebug(main): Regular start, loads the bot
+ ** testTime(any): Test start, used to test something without starting the bot.
  **                    (usually to test a class)
  */
-beforeStart(main);
+shouldEnableDebug(main);
 // testTime();

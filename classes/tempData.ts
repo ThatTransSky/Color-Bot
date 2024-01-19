@@ -1,11 +1,15 @@
 import { readFileSync, writeFile } from 'fs';
-import { jsonParse, jsonString, log } from '../helpers/utils.js';
+import { LocalUtils } from '../helpers/utils.js';
+import { StoredRole, StoredType } from './roleConfig.js';
 
 export class TempData {
     private queueArray: string[] = [];
     private dataFile: DataObject[] = [];
-    private readonly isIdentifiersEmpty = (data: DataObject) =>
-        data.identifiers === undefined;
+    private readonly isIdentifiersEmpty = (identifiers: Identifiers) =>
+        identifiers === undefined ||
+        (identifiers.channelId === undefined &&
+            identifiers.messageId === undefined &&
+            identifiers.userId === undefined);
     private static readonly savePath = './localData/tempData.json';
     private static readonly emptyData = {
         identifiers: {},
@@ -18,7 +22,9 @@ export class TempData {
     constructor() {
         try {
             const data = readFileSync(TempData.savePath, { encoding: 'utf8' });
-            this.initializeData(jsonParse<TempData>(data));
+            this.validateData(
+                LocalUtils.jsonParse<{ dataFile: DataObject[] }>(data).dataFile,
+            );
             this.queueUpdate();
         } catch (err) {
             console.error(err);
@@ -28,7 +34,7 @@ export class TempData {
             this.dataFile = [];
             writeFile(
                 TempData.savePath,
-                jsonString(emptyObj, true),
+                LocalUtils.jsonString(emptyObj, true),
                 { encoding: 'utf8' },
                 (err) => {
                     if (err) throw err;
@@ -36,16 +42,17 @@ export class TempData {
             );
         }
         this.checkExpire();
+        this.updateFile();
     }
 
-    private initializeData(fileData: TempData) {
-        if (fileData.dataFile === undefined || fileData.dataFile.length === 0) {
+    private validateData(fileData: DataObject[]) {
+        if (fileData === undefined || fileData.length === 0) {
             this.updateFile();
             return (this.dataFile = []);
         }
-        fileData.dataFile.forEach((data) => {
+        fileData.forEach((data) => {
             const { identifiers, savedData, expire } = data;
-            if (this.isIdentifiersEmpty(data)) return;
+            if (this.isIdentifiersEmpty(data.identifiers)) return;
             const dataToAdd = {
                 identifiers: identifiers,
                 expire:
@@ -57,7 +64,21 @@ export class TempData {
             this.addOrUpdateData(dataToAdd);
         });
         this.queueUpdate();
-        this.updateFile();
+    }
+
+    /** Default time is 5 minutes. */
+    public extendExpire(
+        identifiers: Identifiers,
+        timeInSeconds: number = 5 * 60,
+    ) {
+        const currExpire = this.getData(identifiers)?.expire;
+        this.addOrUpdateData({
+            identifiers: identifiers,
+            expire:
+                currExpire !== undefined
+                    ? currExpire + timeInSeconds * 1000
+                    : Date.now() + timeInSeconds * 1000,
+        });
     }
 
     public addOrUpdateData(data: DataObject) {
@@ -68,7 +89,7 @@ export class TempData {
     }
 
     private addData(data: DataObject) {
-        if (this.isIdentifiersEmpty(data)) return;
+        if (this.isIdentifiersEmpty(data.identifiers)) return;
         this.dataFile.push({
             identifiers: data.identifiers,
             savedData: data.savedData ?? {},
@@ -89,10 +110,10 @@ export class TempData {
 
     public getData(identifiers: Identifiers) {
         const index = this.findDataIndex(identifiers);
-        return index >= -1 ? this.dataFile[index] : undefined;
+        return index !== -1 ? this.dataFile[index] : undefined;
     }
 
-    private async checkExpire() {
+    private checkExpire() {
         setInterval(() => {
             const beforeLength = this.dataFile.length;
             this.dataFile.forEach((data, index) => {
@@ -133,7 +154,7 @@ export class TempData {
     }
 
     private queueUpdate() {
-        //* Doesn't matter what we push, as long as it's something
+        //* Doesn't matter what we push, as long as it's something.
         this.queueArray.push('boo');
     }
 
@@ -142,11 +163,11 @@ export class TempData {
             if (this.queueArray.shift() === undefined) return;
             writeFile(
                 TempData.savePath,
-                jsonString({ dataFile: this.dataFile }, true),
+                LocalUtils.jsonString({ dataFile: this.dataFile }, true),
                 { encoding: 'utf8' },
                 (err) => {
                     if (err)
-                        log(
+                        LocalUtils.log(
                             'error',
                             `Error saving file (TempData Class) - ${err}`,
                         );
@@ -154,6 +175,29 @@ export class TempData {
             );
         }, 354);
     }
+
+    public countTotalData() {
+        let count = 0;
+        this.dataFile.forEach((data) => {
+            if (data.identifiers !== undefined) count++;
+        });
+        return count;
+    }
+
+    public clearData() {
+        this.dataFile = [];
+        this.queueUpdate();
+    }
+
+    // private updateDataFile() {
+    //     setInterval(() => {
+    //         if (!LocalUtils.isArrayEmpty(this.queueArray)) return;
+    //         const file = LocalUtils.jsonParse<{ dataFile: DataObject[] }>(
+    //             readFileSync(TempData.savePath, { encoding: 'utf8' }),
+    //         );
+    //         this.dataFile = this.validateData(file.dataFile);
+    //     }, 30000);
+    // }
 }
 
 interface Identifiers {
@@ -163,10 +207,18 @@ interface Identifiers {
 }
 
 interface SavedData {
-    roleIds?: string[];
-    rolesToAdd?: string[];
-    rolesToRemove?: string[];
-    desiredAction?: string;
+    roles?: {
+        roleIds?: string[];
+        rolesToAdd?: string[];
+        rolesToRemove?: string[];
+        desiredAction?: string;
+    };
+    manageRoles?: {
+        typeDetails?: StoredType;
+        rolesDetails?: StoredRole[];
+    };
+    /** The stored values should match up with the interaction's _Secondary Action_. */
+    isOnCooldown?: string[];
 }
 
 interface DataObject {

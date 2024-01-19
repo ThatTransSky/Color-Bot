@@ -1,5 +1,13 @@
-import { Client, Guild, GuildMember, Role, User } from 'discord.js';
+import {
+    Client,
+    Guild,
+    GuildMember,
+    Interaction,
+    Role,
+    User,
+} from 'discord.js';
 import { Globals } from './globals.js';
+import { LocalUtils } from './utils.js';
 
 export function getRoleById(
     client: Client,
@@ -20,12 +28,13 @@ export function getRoleById(
                   });
     });
 }
-
+/** DEPRECATED: Please use *getRoleById* instead. */
 export async function getRoleByName(
     client: Client,
     name: string,
     callback: (success: boolean, givenName: string, role?: Role) => void,
 ) {
+    LocalUtils.log('warn', 'DEPRECATED: Please use `getRoleById` instead.');
     const findRole = (guild: Guild) => {
         const cachedRole = guild.roles.cache.find(
             (role) => role.name.toLowerCase() === name.toLowerCase(),
@@ -68,8 +77,9 @@ export function checkRolesToReplace(
     member: GuildMember,
     callback: (roleToReplace: Role | undefined) => void,
 ) {
-    const storedRole = Globals.Roles.getRole({ id: roleId });
-    const type = Globals.Roles.getType(storedRole.type);
+    const roleConfig = getRoleConfig(member.guild.id);
+    const storedRole = roleConfig.getRole({ id: roleId });
+    const type = roleConfig.getType(storedRole.type);
     const roleToReplace = type.roles?.find((role) =>
         member.roles.cache.has(role.id),
     );
@@ -81,4 +91,29 @@ export function checkRolesToReplace(
             ? member.guild.roles.cache.get(roleToReplace.id)
             : undefined,
     );
+}
+
+export function getIdentifiers(interaction: Interaction) {
+    return {
+        messageId:
+            !interaction.isCommand() && !interaction.isAutocomplete()
+                ? interaction.message.id
+                : undefined,
+        channelId: interaction.channelId,
+        userId: interaction.user.id,
+    };
+}
+
+export const emptyReply = {
+    content: '',
+    components: [],
+    embeds: [],
+};
+
+export function getRoleConfig(guildId: string) {
+    return Globals.guildConfigs.guilds.get(guildId)?.roleConfig;
+}
+
+export function getBotConfig(guildId: string) {
+    return Globals.guildConfigs.guilds.get(guildId)?.botConfig;
 }

@@ -1,5 +1,6 @@
 import { stripIndent } from 'common-tags';
 import {
+    ActionRowBuilder,
     AnySelectMenuInteraction,
     ButtonBuilder,
     ButtonInteraction,
@@ -7,132 +8,500 @@ import {
     Client,
     GuildMember,
     Interaction,
+    ModalBuilder,
+    PermissionFlagsBits,
     Role,
+    StringSelectMenuBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    inlineCode,
     italic,
     roleMention,
     userMention,
 } from 'discord.js';
 import {
     CustomIdObj,
-    addButton,
     backButton,
+    exitButton,
     newButtonRow,
     newEmbed,
     newStringSelectMenuBuilderRow,
     nextPreviousAndCurrentButtons,
 } from '../helpers/componentBuilders.js';
 import { Globals } from '../helpers/globals.js';
-import {
-    buildCustomId,
-    interactionTypeToString,
-    jsonString,
-    log,
-} from '../helpers/utils.js';
+import { LocalUtils } from '../helpers/utils.js';
 import {
     checkRolesAgainstUser,
     checkRolesToReplace,
+    getIdentifiers,
+    getRoleConfig,
 } from '../helpers/discordHelpers.js';
 import { exitInteraction } from './miscHandlers.js';
+import { routeModalInteractions } from './handleModal.js';
+import { Route } from '../classes/routes.js';
 
 export async function routeRoleInteraction(
     interaction: Interaction,
     client: Client,
     customIdObj: CustomIdObj,
 ) {
-    if (customIdObj.secondaryAction === 'manageRoles') {
-        manageRolesMenu();
-        return;
-    }
     if (
         interaction.isCommand() ||
         interaction.isAutocomplete() ||
-        interaction.isModalSubmit() ||
         customIdObj.mainAction !== 'roles'
     ) {
         client.emit(
             'warn',
-            `routeRoleInteraction - Unexpected interaction type, got ${interactionTypeToString(
+            `routeRoleInteraction - Unexpected interaction type, got ${LocalUtils.interactionTypeToString(
                 interaction,
             )}`,
         );
         return;
     }
-    if (
-        customIdObj.stage === 'startMessage' &&
-        !customIdObj.anythingElse.includes('back')
-    ) {
-        await interaction.deferReply({ ephemeral: true });
-    } else await interaction.deferUpdate();
-    const routes: {
-        stage: string;
-        execute: (
-            interaction: ButtonInteraction | AnySelectMenuInteraction,
-            client: Client,
-            customIdObj: CustomIdObj,
-        ) => void;
-    }[] = [
-        { stage: 'startMessage', execute: mainRoleMenu },
-        { stage: 'selectType', execute: selectTypeStage },
-        { stage: 'selectRole', execute: selectRoleStage },
-        { stage: 'rolesSelected', execute: rolesSelectedStage },
-        { stage: 'applyRoles', execute: applyChangesStage },
+    if (interaction.isModalSubmit()) {
+        return routeModalInteractions(interaction, client, customIdObj);
+    }
+    const respondingWithModalStages = ['newType', 'minMaxChoices'];
+    if (!respondingWithModalStages.includes(customIdObj.stage)) {
+        if (
+            customIdObj.secondaryAction === 'start' &&
+            customIdObj.stage === 'startRoleMenu' &&
+            !customIdObj.anythingElse.includes('back')
+        ) {
+            await interaction.deferReply({ ephemeral: true });
+        } else await interaction.deferUpdate();
+    }
+    const routes: Route[] = [
+        // Initial Route
+        {
+            secondaryAction: 'start',
+            stage: 'startRoleMenu',
+            execute: startRoute,
+        },
+        // Manage Routes
+        {
+            secondaryAction: 'manageRoles',
+            stage: 'startMessage',
+            execute: mainManageRolesMenu,
+        },
+        {
+            secondaryAction: 'manageRoles',
+            stage: 'newType',
+            execute: newTypeStage,
+        },
+        {
+            secondaryAction: 'manageRoles',
+            stage: 'isMultiRole',
+            execute: isMultiRoleStage,
+        },
+        {
+            secondaryAction: 'manageRoles',
+            stage: 'minMaxChoices',
+            execute: chooseMinMaxChoices,
+        },
+        {
+            secondaryAction: 'manageRoles',
+            stage: 'finishedType',
+            execute: finishedTypeStage,
+        },
+        // Regular Routes
+        {
+            secondaryAction: 'userRoles',
+            stage: 'selectType',
+            execute: selectTypeStage,
+        },
+        {
+            secondaryAction: 'userRoles',
+            stage: 'selectRole',
+            execute: selectRoleStage,
+        },
+        {
+            secondaryAction: 'userRoles',
+            stage: 'rolesSelected',
+            execute: rolesSelectedStage,
+        },
+        {
+            secondaryAction: 'userRoles',
+            stage: 'applyRoles',
+            execute: applyChangesStage,
+        },
     ];
-    const currRoute = routes.find((route) => route.stage === customIdObj.stage);
-    if (currRoute === undefined) {
-        client.emit(
-            'error',
-            new Error(
-                `routeRoleInteraction - ${customIdObj.stage} is missing from routes!`,
-            ),
-        );
-        return;
-    }
-    if (currRoute.execute === undefined) {
-        client.emit(
-            'error',
-            new Error(
-                `routeRoleInteraction - ${customIdObj.stage} exists but is missing its handling function!`,
-            ),
-        );
-        return;
-    }
+    const currRoute = LocalUtils.findCurrRoute(customIdObj, routes);
+    if (currRoute === undefined) return;
     return currRoute.execute(interaction, client, customIdObj);
 }
 
-async function mainRoleMenu(
-    interaction: ButtonInteraction | AnySelectMenuInteraction,
+// Initial Route
+
+async function startRoute(
+    interaction: ButtonInteraction,
     client: Client,
     customIdObj: CustomIdObj,
 ) {
-    const { mainAction } = customIdObj;
-    let buttonRow = newButtonRow(mainAction, true);
-    const startMessageEmbed = newEmbed(
-        'User Roles',
+    const chooseActionEmbed = newEmbed(
+        'Role Menu',
         stripIndent`
         Welcome ${userMention(interaction.user.id)}!
 
-        Please select the action you would like to do using the buttons below.
+        To choose your roles, click 'Choose Roles'.
 
+        To manage the roles that are added to this bot, click 'Manage Roles'.
+        ${italic(
+            'Note: You need to have `Manage Roles` permissions to use this feature.',
+        )}
+        `,
+    );
+
+    const buttonRow = newButtonRow('roles', true);
+    const manageRolesButton = new ButtonBuilder()
+        .setCustomId(
+            LocalUtils.buildCustomId({
+                ...customIdObj,
+                secondaryAction: 'manageRoles',
+                stage: 'startMessage',
+                anythingElse: [],
+            }),
+        )
+        .setLabel('Manage Roles')
+        .setStyle(ButtonStyle.Primary);
+    if (!interaction.memberPermissions.has('ManageRoles', true)) {
+        manageRolesButton.setDisabled(true);
+    }
+    buttonRow.setComponents([
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    secondaryAction: 'userRoles',
+                    stage: 'selectType',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('Choose Roles')
+            .setStyle(ButtonStyle.Success),
+        manageRolesButton,
+        ...buttonRow.components,
+    ]);
+    return await interaction.editReply({
+        content: '',
+        embeds: [chooseActionEmbed],
+        components: [buttonRow],
+    });
+}
+
+//
+//
+//
+// Manage Routes
+//
+//
+//
+
+async function mainManageRolesMenu(
+    interaction: ButtonInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    if (
+        !interaction.memberPermissions.has(
+            PermissionFlagsBits.ManageRoles,
+            true,
+        )
+    ) {
+        return await interaction.editReply({
+            content:
+                'You lack the sufficient permissions to perform this action!',
+        });
+    }
+    const roleConfig = getRoleConfig(interaction.guildId);
+    const welcomeEmbed = newEmbed(
+        'Role Menu',
+        stripIndent`        
+        Choose the category you would like to edit or
+        add another category by clicking 'New Category'.
+
+        ${
+            roleConfig.isTypesEmpty()
+                ? italic(
+                      'Note: There are no current categories. Please add some using the button below.',
+                  )
+                : ''
+        }
         `,
         true,
         'Random',
     );
-    // startMessageEmbed.setFooter({ text: `Dev Mode: ${Globals.devMode}` });
-    buttonRow.setComponents(
-        addButton(
-            { style: ButtonStyle.Primary, label: 'Change Roles' },
-            { ...customIdObj, stage: 'selectType' },
-        ),
-        ...buttonRow.components,
-    );
-
-    await interaction.editReply({
-        components: [buttonRow],
-        embeds: [startMessageEmbed],
+    const buttonRow = newButtonRow('roles').setComponents([
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'newType',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('New Category')
+            .setStyle(ButtonStyle.Primary),
+        backButton({
+            ...customIdObj,
+            stage: 'startRoleMenu',
+            secondaryAction: 'start',
+            anythingElse: ['back'],
+        }),
+        exitButton('roles'),
+    ]);
+    const categorySelectionRow =
+        new ActionRowBuilder<StringSelectMenuBuilder>().setComponents([
+            new StringSelectMenuBuilder()
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        stage: 'editCategory',
+                        anythingElse: [],
+                    }),
+                )
+                .setOptions(roleConfig.convertTypesToOptions()),
+        ]);
+    return await interaction.editReply({
+        content: '',
+        components: roleConfig.isTypesEmpty()
+            ? [buttonRow]
+            : [categorySelectionRow, buttonRow],
+        embeds: [welcomeEmbed],
     });
 }
 
-async function manageRolesMenu() {}
+async function newTypeStage(
+    interaction: ButtonInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    const nameInput = new ActionRowBuilder<TextInputBuilder>().setComponents(
+        new TextInputBuilder()
+            .setCustomId('label')
+            .setLabel('Name')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('This is the name that users will see.'),
+    );
+    const descriptionInput =
+        new ActionRowBuilder<TextInputBuilder>().setComponents(
+            new TextInputBuilder()
+                .setCustomId('description')
+                .setLabel('Description')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(false)
+                .setPlaceholder('Leave empty for no description.'),
+        );
+    const valueInput = new ActionRowBuilder<TextInputBuilder>().setComponents(
+        new TextInputBuilder()
+            .setCustomId('value')
+            .setLabel('Internal Name')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('Like an ID, Has to be unique!'),
+    );
+    return await interaction.showModal(
+        new ModalBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'verifyTypeDetails',
+                    anythingElse: [],
+                }),
+            )
+            .setComponents(nameInput, descriptionInput, valueInput)
+            .setTitle('Category Details'),
+    );
+}
+
+async function isMultiRoleStage(
+    interaction: ButtonInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    const embed = newEmbed(
+        'Role Menu',
+        stripIndent`
+        Should this category be multi-role? (if users should be allowed to 
+        pick more than one role in this category)
+        `,
+        true,
+        'Random',
+    );
+    const buttonRow = newButtonRow('roles');
+    buttonRow.setComponents([
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'minMaxChoices',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('Yes')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'finishedType',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('No')
+            .setStyle(ButtonStyle.Danger),
+    ]);
+    await interaction.editReply({
+        content: '',
+        embeds: [embed],
+        components: [buttonRow],
+    });
+}
+
+async function chooseMinMaxChoices(
+    interaction: ButtonInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    const typeDetails = Globals.tempData.getData(getIdentifiers(interaction))
+        .savedData.manageRoles.typeDetails;
+    typeDetails.multiRoleType = true;
+    Globals.tempData.addOrUpdateData({
+        identifiers: getIdentifiers(interaction),
+        savedData: {
+            manageRoles: {
+                typeDetails: typeDetails,
+            },
+        },
+    });
+    const minInput = new ActionRowBuilder<TextInputBuilder>().setComponents(
+        new TextInputBuilder()
+            .setCustomId('min')
+            .setLabel('Minimum Role Choices')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setValue('1'),
+    );
+    const maxInput = new ActionRowBuilder<TextInputBuilder>().setComponents(
+        new TextInputBuilder()
+            .setCustomId('max')
+            .setLabel('Maximum Role Choices')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+            .setPlaceholder(
+                'Leave empty for no limit. Has to be above minimum.',
+            ),
+    );
+
+    await interaction.showModal(
+        new ModalBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'verifyMinMax',
+                    anythingElse: [],
+                }),
+            )
+            .setComponents(minInput, maxInput)
+            .setTitle('Minimum and Maximum Role Choices'),
+    );
+}
+
+async function finishedTypeStage(
+    interaction: ButtonInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    const typeDetails = Globals.tempData.getData(getIdentifiers(interaction))
+        ?.savedData?.manageRoles?.typeDetails;
+    if (typeDetails === undefined) {
+        return await interaction.editReply({
+            content: stripIndent`
+            Interaction Data timed out, please try again later.
+            _(Note that most data expires within 5-15 minutes)_
+            `,
+            embeds: [],
+            components: [],
+        });
+    }
+    const roleConfig = getRoleConfig(interaction.guildId);
+    const result = roleConfig.addType(typeDetails, typeDetails.roles);
+    if (!result?.success) {
+        return await interaction.editReply({
+            content: 'Unexpected error, reason ' + inlineCode(result.reason),
+            components: [],
+            embeds: [],
+        });
+    }
+    Globals.tempData.extendExpire(getIdentifiers(interaction));
+    const successEmbed = newEmbed(
+        'Role Menu',
+        stripIndent`
+        Success!
+
+        Category Details:
+        Name - ${typeDetails.label}
+        Description - ${
+            typeDetails.description !== ''
+                ? typeDetails.description
+                : 'No description provided.'
+        }
+        Unique Name: ${typeDetails.value}
+
+        Category added successfully, would like to add roles?
+        Alternatively, you can restart the interaction to either edit other categories or choose some roles.
+        `,
+    );
+
+    const buttonRow = newButtonRow(customIdObj.mainAction);
+    buttonRow.setComponents([
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'shouldAddRoles',
+                }),
+            )
+            .setLabel('Yes, Add Roles')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'startMessage',
+                    anythingElse: ['back'],
+                }),
+            )
+            .setLabel('Restart: Manage Roles')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    secondaryAction: 'userRoles',
+                    stage: 'selectType',
+                    anythingElse: ['back'],
+                }),
+            )
+            .setLabel('Restart: Choose Roles')
+            .setStyle(ButtonStyle.Secondary),
+    ]);
+
+    return await interaction.editReply({
+        content: '',
+        embeds: [successEmbed],
+        components: [buttonRow],
+    });
+}
+
+//
+//
+//
+// Regular Routes
+//
+//
+//
 
 async function selectTypeStage(
     interaction: ButtonInteraction | AnySelectMenuInteraction,
@@ -144,7 +513,17 @@ async function selectTypeStage(
         return selectRoleStage(interaction, client, customIdObj);
     }
     let buttonRow = newButtonRow('roles', true);
-    if (Globals.Roles.isTypesEmpty()) {
+    buttonRow.setComponents(
+        backButton({
+            ...customIdObj,
+            secondaryAction: 'start',
+            stage: 'startRoleMenu',
+            anythingElse: ['back'],
+        }),
+        ...buttonRow.components,
+    );
+    const roleConfig = getRoleConfig(interaction.guildId);
+    if (roleConfig.isTypesEmpty()) {
         return await interaction.editReply({
             content: stripIndent`
             Whoops! There are currently no categories configured for this server.
@@ -154,7 +533,7 @@ async function selectTypeStage(
             components: [buttonRow],
         });
     }
-    if (Globals.Roles.isRolesEmpty()) {
+    if (roleConfig.isRolesEmpty()) {
         return await interaction.editReply({
             content: stripIndent`
             Whoops! There are currently no categories that have roles attached to them on this server.
@@ -165,7 +544,7 @@ async function selectTypeStage(
         });
     }
     const typeEmbed = newEmbed(
-        'User Roles',
+        'Role Menu',
         stripIndent`
         Please select a category from the following:
 
@@ -176,17 +555,9 @@ async function selectTypeStage(
     const typesSelectMenu = newStringSelectMenuBuilderRow(
         {
             placeholder: 'Select a category:',
-            options: Globals.Roles.convertTypesToOptions(),
+            options: roleConfig.convertTypesToOptions(),
         },
         { ...customIdObj, stage: 'selectRole' },
-    );
-    buttonRow.setComponents(
-        backButton({
-            ...customIdObj,
-            stage: 'startMessage',
-            anythingElse: ['back'],
-        }),
-        ...buttonRow.components,
     );
     return interaction.editReply({
         content: '',
@@ -195,7 +566,7 @@ async function selectTypeStage(
     });
 }
 
-export async function selectRoleStage(
+async function selectRoleStage(
     interaction: ButtonInteraction | AnySelectMenuInteraction,
     client: Client,
     customIdObj: CustomIdObj,
@@ -206,9 +577,36 @@ export async function selectRoleStage(
               .find((args) => args.toLowerCase() !== 'back')
               .toLowerCase()
         : interaction.values[0].toLowerCase();
+    const roleConfig = getRoleConfig(interaction.guildId);
+    const roles = roleConfig.getType(type).roles;
+    if (roles === undefined || roles.length === 0) {
+        const backButtonRow = newButtonRow('roles', true);
+        backButtonRow.setComponents([
+            new ButtonBuilder()
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        stage: 'selectType',
+                        anythingElse: ['back'],
+                    }),
+                )
+                .setLabel('Change category')
+                .setStyle(ButtonStyle.Primary),
+            ...backButtonRow.components,
+        ]);
+        return await interaction.editReply({
+            content: stripIndent`
+            Whoops! This category has no roles attached to it.
+            Please ask the server admins / moderators to attach roles to the ${inlineCode(
+                `${roleConfig.getType(type).label}`,
+            )} category.
+            `,
+            embeds: [],
+            components: [backButtonRow],
+        });
+    }
 
-    const { Roles } = Globals;
-    const rolesAsOptions = Roles.getRolesFromType(type, true);
+    const rolesAsOptions = roleConfig.getRolesFromType(type, true);
     const roleSelectMenu = newStringSelectMenuBuilderRow(
         { options: rolesAsOptions, placeholder: 'Select a role:' },
         { ...customIdObj, stage: 'rolesSelected' },
@@ -222,13 +620,13 @@ export async function selectRoleStage(
         }),
         ...buttonRow.components,
     );
-    if (Roles.getType(type)?.multiRoleType) {
+    if (roleConfig.getType(type)?.multiRoleType) {
         roleSelectMenu.components[0].data.min_values = 1;
         roleSelectMenu.components[0].data.max_values = rolesAsOptions.length;
         roleSelectMenu.components[0].data.placeholder = 'Select roles:';
     }
 
-    const selectRolesEmbed = Roles.selectRolesEmbed(type);
+    const selectRolesEmbed = roleConfig.selectRolesEmbed(type);
 
     await interaction.editReply({
         content: '',
@@ -242,12 +640,13 @@ async function rolesSelectedStage(
     client: Client<boolean>,
     customIdObj: CustomIdObj,
 ) {
-    const { Roles } = Globals;
+    const roleConfig = getRoleConfig(interaction.guildId);
     const roleIds = interaction.isButton()
         ? customIdObj.anythingElse.filter((args) => args !== 'back')
         : interaction.values;
-    const storedRoles = roleIds.map((id) => Roles.getRole({ id: id }));
-    if (storedRoles.length === 0) return log('error', 'storedRoles Empty');
+    const storedRoles = roleIds.map((id) => roleConfig.getRole({ id: id }));
+    if (storedRoles.length === 0)
+        return LocalUtils.log('error', 'storedRoles Empty');
     const afterCheck_MultiType = async (
         rolesToRemove: Role[],
         rolesToAdd: Role[],
@@ -259,12 +658,14 @@ async function rolesSelectedStage(
                 channelId: interaction.channelId,
             },
             savedData: {
-                rolesToAdd: rolesToAdd.map((role) => role.id),
-                rolesToRemove: rolesToRemove.map((role) => role.id),
+                roles: {
+                    rolesToAdd: rolesToAdd.map((role) => role.id),
+                    rolesToRemove: rolesToRemove.map((role) => role.id),
+                },
             },
         });
         const roleChangesEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
             Please confirm these role changes:
             ${italic('Roles to add:')}
@@ -291,7 +692,7 @@ async function rolesSelectedStage(
                 style: ButtonStyle.Primary,
                 label: 'Apply Changes',
             }).setCustomId(
-                buildCustomId({
+                LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'applyRoles',
                     anythingElse: ['all'],
@@ -304,7 +705,7 @@ async function rolesSelectedStage(
                     (rolesToRemove.length === 0 && rolesToAdd.length !== 0) ||
                     rolesToAdd.length === 0,
             }).setCustomId(
-                buildCustomId({
+                LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'applyRoles',
                     anythingElse: ['add'],
@@ -327,7 +728,7 @@ async function rolesSelectedStage(
     const afterCheck = async (roleToReplace: Role) => {
         const replyWithRemoval = async () => {
             const roleRemovalEmbed = newEmbed(
-                'User Roles',
+                'Role Menu',
                 stripIndent`
             You already have the role ${roleMention(storedRoles[0].id)}!
             Do you want to remove it?
@@ -341,7 +742,7 @@ async function rolesSelectedStage(
                     style: ButtonStyle.Danger,
                     label: 'Remove Role',
                 }).setCustomId(
-                    buildCustomId({
+                    LocalUtils.buildCustomId({
                         ...customIdObj,
                         stage: 'applyRoles',
                         anythingElse: ['remove'],
@@ -361,8 +762,10 @@ async function rolesSelectedStage(
                     channelId: interaction.channelId,
                 },
                 savedData: {
-                    rolesToAdd: [],
-                    rolesToRemove: [storedRoles[0].id],
+                    roles: {
+                        rolesToAdd: [],
+                        rolesToRemove: [storedRoles[0].id],
+                    },
                 },
             });
             await interaction.editReply({
@@ -372,7 +775,6 @@ async function rolesSelectedStage(
             });
         };
         const replyWithAddition = async () => {
-            // log('log', 'boo');
             Globals.tempData.addOrUpdateData({
                 identifiers: {
                     messageId: interaction.message.id,
@@ -380,15 +782,18 @@ async function rolesSelectedStage(
                     channelId: interaction.channelId,
                 },
                 savedData: {
-                    rolesToAdd: [storedRoles[0].id],
-                    rolesToRemove:
-                        roleToReplace !== null && roleToReplace !== undefined
-                            ? [roleToReplace.id]
-                            : [],
+                    roles: {
+                        rolesToAdd: [storedRoles[0].id],
+                        rolesToRemove:
+                            roleToReplace !== null &&
+                            roleToReplace !== undefined
+                                ? [roleToReplace.id]
+                                : [],
+                    },
                 },
             });
             const roleAdditionEmbed = newEmbed(
-                'User Roles',
+                'Role Menu',
                 stripIndent`
                 Are you sure you want to add the role ${roleMention(
                     storedRoles[0].id,
@@ -415,7 +820,7 @@ async function rolesSelectedStage(
                     style: ButtonStyle.Primary,
                     label: 'Apply Changes',
                 }).setCustomId(
-                    buildCustomId({
+                    LocalUtils.buildCustomId({
                         ...customIdObj,
                         stage: 'applyRoles',
                         anythingElse: ['replace'],
@@ -441,7 +846,7 @@ async function rolesSelectedStage(
             : await replyWithRemoval();
     };
 
-    Roles.getType(storedRoles[0].type)?.multiRoleType === true
+    roleConfig.getType(storedRoles[0].type)?.multiRoleType === true
         ? checkRolesAgainstUser(
               storedRoles.map((storedRole) => storedRole.id),
               interaction.member as GuildMember,
@@ -459,25 +864,18 @@ async function applyChangesStage(
     client: Client,
     customIdObj: CustomIdObj,
 ) {
+    const roleConfig = getRoleConfig(interaction.guildId);
     const applyChanges = async () => {
         const roleType =
             rolesToAdd.length !== 0
-                ? Globals.Roles.getRole({ id: rolesToAdd[0] }).type
-                : Globals.Roles.getRole({ id: rolesToRemove[0] }).type;
-        const buttonRow = newButtonRow(customIdObj.mainAction, true);
-        buttonRow.setComponents([
-            ...nextPreviousAndCurrentButtons(customIdObj, roleType),
-            new ButtonBuilder({
-                label: 'Restart',
-                style: ButtonStyle.Secondary,
-                customId: buildCustomId({
-                    ...customIdObj,
-                    stage: 'startMessage',
-                    anythingElse: ['back'],
-                }),
-            }),
-            ...buttonRow.components,
+                ? roleConfig.getRole({ id: rolesToAdd[0] }).type
+                : roleConfig.getRole({ id: rolesToRemove[0] }).type;
+        const firstButtonRow = newButtonRow(customIdObj.mainAction);
+        firstButtonRow.setComponents([
+            ...nextPreviousAndCurrentButtons(roleConfig, customIdObj, roleType),
         ]);
+        const secondButtonRow = newButtonRow(customIdObj.mainAction);
+        secondButtonRow.setComponents([]);
         if (rolesToAdd.length !== 0) {
             await memberRoles.add(rolesToAdd, 'Role Bot');
         }
@@ -485,7 +883,7 @@ async function applyChangesStage(
             await memberRoles.remove(rolesToRemove, 'Role Bot');
         }
         const afterChangesEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
             Success!
 
@@ -494,13 +892,13 @@ async function applyChangesStage(
                 .filter((id) => memberRoles.cache.has(id))
                 .map((id) => roleMention(id))
                 .join('\n')}
-            
+
             Removed:
             ${rolesToRemove
                 .filter((id) => !memberRoles.cache.has(id))
                 .map((id) => roleMention(id))
                 .join('\n')}
-            
+
             Select an action below:
             `,
             true,
@@ -508,13 +906,16 @@ async function applyChangesStage(
         );
         return await interaction.editReply({
             content: '',
-            components: [buttonRow],
+            components: [firstButtonRow, secondButtonRow],
             embeds: [afterChangesEmbed],
         });
     };
     const onlyAddRoles = async () => {
         if (rolesToAdd.length === 0) {
-            log('error', 'got to onlyAddRoles with rolesToAdd being empty');
+            LocalUtils.log(
+                'error',
+                'got to onlyAddRoles with rolesToAdd being empty',
+            );
             await interaction.editReply({
                 content: 'Something went wrong, please try again later.',
                 components: [],
@@ -522,14 +923,14 @@ async function applyChangesStage(
             });
             return setTimeout(() => exitInteraction(interaction), 10000);
         }
-        const roleType = Globals.Roles.getRole({ id: rolesToAdd[0] }).type;
+        const roleType = roleConfig.getRole({ id: rolesToAdd[0] }).type;
         const buttonRow = newButtonRow(customIdObj.mainAction, true);
         buttonRow.setComponents([
-            ...nextPreviousAndCurrentButtons(customIdObj, roleType),
+            ...nextPreviousAndCurrentButtons(roleConfig, customIdObj, roleType),
             new ButtonBuilder({
                 label: 'Restart',
                 style: ButtonStyle.Secondary,
-                customId: buildCustomId({
+                customId: LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'startMessage',
                     anythingElse: ['back'],
@@ -539,7 +940,7 @@ async function applyChangesStage(
         ]);
         await memberRoles.add(rolesToAdd, 'Role Bot');
         const rolesAddedEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
             Success!
 
@@ -561,14 +962,14 @@ async function applyChangesStage(
         });
     };
     const removeRole = async () => {
-        const roleType = Globals.Roles.getRole({ id: rolesToRemove[0] }).type;
+        const roleType = roleConfig.getRole({ id: rolesToRemove[0] }).type;
         const buttonRow = newButtonRow(customIdObj.mainAction, true);
         buttonRow.setComponents([
-            ...nextPreviousAndCurrentButtons(customIdObj, roleType),
+            ...nextPreviousAndCurrentButtons(roleConfig, customIdObj, roleType),
             new ButtonBuilder({
                 label: 'Restart',
                 style: ButtonStyle.Secondary,
-                customId: buildCustomId({
+                customId: LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'startMessage',
                     anythingElse: ['back'],
@@ -578,7 +979,7 @@ async function applyChangesStage(
         ]);
         await memberRoles.remove(rolesToRemove, 'Role Bot');
         const rolesRemovedEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
             Successfully removed ${roleMention(rolesToRemove[0])}!
 
@@ -594,14 +995,14 @@ async function applyChangesStage(
         });
     };
     const replaceRole = async () => {
-        const roleType = Globals.Roles.getRole({ id: rolesToAdd[0] }).type;
+        const roleType = roleConfig.getRole({ id: rolesToAdd[0] }).type;
         const buttonRow = newButtonRow(customIdObj.mainAction, true);
         buttonRow.setComponents([
-            ...nextPreviousAndCurrentButtons(customIdObj, roleType),
+            ...nextPreviousAndCurrentButtons(roleConfig, customIdObj, roleType),
             new ButtonBuilder({
                 label: 'Restart',
                 style: ButtonStyle.Secondary,
-                customId: buildCustomId({
+                customId: LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'startMessage',
                     anythingElse: ['back'],
@@ -614,7 +1015,7 @@ async function applyChangesStage(
             await memberRoles.remove(rolesToRemove, 'Role Bot');
         }
         const rolesReplacedEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
             ${
                 rolesToRemove.length !== 0
@@ -635,14 +1036,10 @@ async function applyChangesStage(
             embeds: [rolesReplacedEmbed],
         });
     };
-    const tempData = Globals.tempData.getData({
-        messageId: interaction.message.id,
-        userId: interaction.user.id,
-        channelId: interaction.channelId,
-    });
+    const tempData = Globals.tempData.getData(getIdentifiers(interaction));
     if (tempData === undefined) {
         const expiredDataEmbed = newEmbed(
-            'User Roles',
+            'Role Menu',
             stripIndent`
                 Looks like the previous interaction expired (The data expires after 5 minutes).
                 Please try again.
@@ -655,7 +1052,7 @@ async function applyChangesStage(
             new ButtonBuilder({
                 style: ButtonStyle.Secondary,
                 label: 'Restart Selection',
-                customId: buildCustomId({
+                customId: LocalUtils.buildCustomId({
                     ...customIdObj,
                     stage: 'selectType',
                 }),
@@ -668,15 +1065,15 @@ async function applyChangesStage(
             embeds: [expiredDataEmbed],
         });
     }
-    const { rolesToRemove, rolesToAdd } = tempData.savedData;
+    const { rolesToRemove, rolesToAdd } = tempData.savedData.roles;
     const memberRoles =
         interaction.member instanceof GuildMember
             ? interaction.member.roles
             : undefined;
     if (memberRoles === undefined) {
-        return log(
+        return LocalUtils.log(
             'error',
-            'interaction.member did not return GuildMember, what',
+            'interaction.member did not return GuildMember',
         );
     }
     const desiredAction = customIdObj.anythingElse.filter(

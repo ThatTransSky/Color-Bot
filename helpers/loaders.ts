@@ -3,7 +3,7 @@ import { EventStructure } from '../classes/EventStructure.js';
 import { ClientWithCommands } from '../main.js';
 import { Collection } from 'discord.js';
 import { CommandStructure } from '../classes/CommandStructure.js';
-import { log } from './utils.js';
+import { LocalUtils } from './utils.js';
 
 export async function loadCommands(
     client: ClientWithCommands,
@@ -18,7 +18,7 @@ export async function loadCommands(
             client.commands.set(command.data.name, command);
         }
         if (commands.length === 0 || client.commands.at(0) === undefined) {
-            log('warn', 'WARN: No commands were loaded.');
+            LocalUtils.log('warn', 'WARN: No commands were loaded.');
         }
         loaded();
     });
@@ -40,7 +40,7 @@ export async function loadEvents(
         }
 
         if (events.length === 0) {
-            log('warn', 'WARN: No events were loaded.');
+            LocalUtils.log('warn', 'WARN: No events were loaded.');
         }
         loaded();
     });
@@ -52,13 +52,16 @@ async function getCommandFiles(cb: (files: string[]) => void) {
         { encoding: 'utf-8', recursive: true },
         (err, files) => {
             if (err !== null && err !== undefined) {
-                log('error', err);
+                LocalUtils.log('error', err);
                 throw err;
             }
 
             const commandFiles = files.filter((file) => file.endsWith('.ts'));
             if (commandFiles.length === 0) {
-                return log('error', 'ERROR: No commands were found!');
+                return LocalUtils.log(
+                    'error',
+                    'ERROR: No commands were found!',
+                );
             }
             commandFiles.forEach(
                 (file, i) => (commandFiles[i] = '../commands/' + file),
@@ -72,13 +75,13 @@ async function getCommandFiles(cb: (files: string[]) => void) {
 async function getEventFiles(cb: (files: string[]) => void) {
     readdir('events', { encoding: 'utf-8', recursive: true }, (err, files) => {
         if (err !== null && err !== undefined) {
-            log('error', err);
+            LocalUtils.log('error', err);
             throw err;
         }
 
         const eventFiles = files.filter((file) => file.endsWith('.ts'));
         if (eventFiles.length === 0) {
-            return log('error', 'ERROR: No events were found!');
+            return LocalUtils.log('error', 'ERROR: No events were found!');
         }
 
         eventFiles.forEach((file, i) => (eventFiles[i] = '../events/' + file));

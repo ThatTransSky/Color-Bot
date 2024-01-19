@@ -6,8 +6,11 @@ export const data = {
 };
 
 export async function execute(deletedRole: Role) {
-    const storedRole = Globals.Roles.getRole({ id: deletedRole.id });
+    const { roleConfig } = Globals.guildConfigs.guilds.get(
+        deletedRole.guild.id,
+    );
+    const storedRole = roleConfig.getRole({ id: deletedRole.id });
     if (storedRole !== undefined) {
-        return Globals.Roles.removeRole(storedRole);
+        return roleConfig.removeRole(storedRole);
     }
 }

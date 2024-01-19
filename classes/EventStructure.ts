@@ -1,6 +1,8 @@
+import { ClientEvents, Events } from 'discord.js';
+
 export interface EventStructure {
     data: {
-        name: string;
+        name: keyof ClientEvents;
         once: boolean;
     };
     execute: (...args: any[]) => any;

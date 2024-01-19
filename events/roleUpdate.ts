@@ -6,8 +6,14 @@ export const data = {
 };
 
 export async function execute(oldRole: Role, updatedRole: Role) {
-    const storedRole = Globals.Roles.getRole({ id: oldRole.id });
+    let { roleConfig } = Globals.guildConfigs.guilds.get(oldRole.guild?.id);
+    if (roleConfig === undefined) {
+        roleConfig = Globals.guildConfigs.guilds.get(
+            updatedRole.guild?.id,
+        ).roleConfig;
+    }
+    const storedRole = roleConfig.getRole({ id: oldRole.id });
     if (storedRole !== undefined) {
-        return Globals.Roles.updateRole(storedRole, updatedRole);
+        return roleConfig.updateRole(storedRole, updatedRole);
     }
 }

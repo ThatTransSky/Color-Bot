@@ -1,7 +1,8 @@
-import { log } from '../helpers/utils.js';
+import { LocalUtils } from '../helpers/utils.js';
 
 export const data = { name: 'error' };
 
 export async function execute(err: Error) {
-    log('error', err);
+    LocalUtils.log('error', err);
+    LocalUtils.log('debug', err.stack);
 }

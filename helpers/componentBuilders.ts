@@ -8,8 +8,8 @@ import {
     EmbedBuilder,
     StringSelectMenuBuilder,
 } from 'discord.js';
-import { buildCustomId, log } from './utils.js';
-import { Globals } from './globals.js';
+import { LocalUtils } from './utils.js';
+import { RoleConfig } from '../classes/roleConfig.js';
 
 export function exitButton(mainAction: string) {
     return new ButtonBuilder({
@@ -24,7 +24,7 @@ export function backButton(customIdObj: CustomIdObj, previousStage?: string) {
         label: 'Back',
         style: ButtonStyle.Secondary,
     }).setCustomId(
-        buildCustomId({
+        LocalUtils.buildCustomId({
             ...customIdObj,
             stage:
                 previousStage !== undefined ? previousStage : customIdObj.stage,
@@ -42,26 +42,31 @@ export function newButton(
     options: Partial<APIButtonComponent>,
     customIdObj: CustomIdObj,
 ) {
-    return new ButtonBuilder(options).setCustomId(buildCustomId(customIdObj));
+    return new ButtonBuilder(options).setCustomId(
+        LocalUtils.buildCustomId(customIdObj),
+    );
 }
 
 export function addButton(
     options: Partial<APIButtonComponent>,
     customIdObj: CustomIdObj,
 ) {
-    return new ButtonBuilder(options).setCustomId(buildCustomId(customIdObj));
+    return new ButtonBuilder(options).setCustomId(
+        LocalUtils.buildCustomId(customIdObj),
+    );
 }
 
 export function nextPreviousAndCurrentButtons(
+    roleConfig: RoleConfig,
     customIdObj: CustomIdObj,
     roleType: string,
 ) {
-    const roleTypes = Globals.Roles.types;
+    const roleTypes = roleConfig.types;
     const currIndex = roleTypes.findIndex(
         (type) => type.value === roleType.toLowerCase(),
     );
     if (currIndex === -1) {
-        log(
+        LocalUtils.log(
             'error',
             "nextAndPreviousButtons - roleType doesn't exist, got " + roleType,
         );
@@ -74,7 +79,7 @@ export function nextPreviousAndCurrentButtons(
     const nextButton = new ButtonBuilder({
         label: `Next: ${nextType.label}`,
         style: ButtonStyle.Success,
-        customId: buildCustomId({
+        customId: LocalUtils.buildCustomId({
             ...customIdObj,
             stage: 'selectRole',
             anythingElse: [nextType.value],
@@ -84,7 +89,7 @@ export function nextPreviousAndCurrentButtons(
     const currentButton = new ButtonBuilder({
         label: `Current: ${currentType.label}`,
         style: ButtonStyle.Primary,
-        customId: buildCustomId({
+        customId: LocalUtils.buildCustomId({
             ...customIdObj,
             stage: 'selectRole',
             anythingElse: [currentType.value],
@@ -94,7 +99,7 @@ export function nextPreviousAndCurrentButtons(
     const previousButton = new ButtonBuilder({
         label: `Previous: ${previousType.label}`,
         style: ButtonStyle.Secondary,
-        customId: buildCustomId({
+        customId: LocalUtils.buildCustomId({
             ...customIdObj,
             stage: 'selectRole',
             anythingElse: [previousType.value],
@@ -106,8 +111,8 @@ export function nextPreviousAndCurrentButtons(
 export function newEmbed(
     title: string,
     description: string,
-    timestamp?: boolean,
-    color?: ColorResolvable,
+    timestamp: boolean = true,
+    color: ColorResolvable = 'Random',
 ): EmbedBuilder {
     return timestamp === true
         ? new EmbedBuilder()

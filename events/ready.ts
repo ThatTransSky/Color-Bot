@@ -1,9 +1,10 @@
 import { ApplicationCommandData, Collection, REST, Routes } from 'discord.js';
 import { config } from 'dotenv';
-import { ClientWithCommands } from '../main';
+import { ClientWithCommands } from '../main.js';
 import { exit } from 'process';
-import { log } from '../helpers/utils.js';
+import { LocalUtils } from '../helpers/utils.js';
 import { Globals } from '../helpers/globals.js';
+import { GuildConfigs } from '../classes/guildConfigs.js';
 config(); // required for .env
 
 export const data = {
@@ -25,7 +26,7 @@ export async function execute(client: ClientWithCommands) {
         exit(1);
     }
 
-    log('log', `Logged in as ${client.user.tag}!`);
+    LocalUtils.log('log', `Logged in as ${client.user.tag}!`);
     const CLIENT_ID = process.env.CLIENT_ID as string;
     const GUILD_ID = Globals.GUILD_ID as string;
     const rest = new REST({
@@ -36,21 +37,29 @@ export async function execute(client: ClientWithCommands) {
         rest.put(Routes.applicationCommands(CLIENT_ID), {
             body: commands,
         });
-        console.log('Successfully registered global commands.');
+        LocalUtils.log('log', 'Successfully registered global commands.');
     } else if (process.env.ENV.toLowerCase() === 'development') {
         rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
             body: commands,
         });
-        console.log('Successfully registered local commands.');
+        LocalUtils.log('log', 'Successfully registered local commands.');
     } else {
-        console.log(
+        LocalUtils.log(
+            'log',
             `Deployment Environment not recognized, got ${
                 process.env.ENV as string
             }`,
         );
     }
-
-    Globals.Roles.verifyStoredRoles(client);
-    if (Globals.devMode)
-        log('warn', 'Dev Mode™ enabled! Limiting access to dev team only...');
+    Globals.guildConfigs = new GuildConfigs(client);
+    Globals.guildConfigs.guilds.forEach((config) =>
+        config.roleConfig.verifyStoredRoles(client),
+    );
+    if (Globals.globalBotConfig.devMode) {
+        LocalUtils.log(
+            'warn',
+            'Dev Mode™ enabled! Limiting access to the following users: ',
+        );
+        Globals.globalBotConfig.outputBypassList(client);
+    }
 }
