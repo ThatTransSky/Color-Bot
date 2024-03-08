@@ -29,6 +29,9 @@ export class LocalUtils {
             case 'warn':
                 console.log(ch.yellowBright(items.join('')));
                 break;
+            case 'success':
+                console.log(ch.greenBright(items.join('')));
+                break;
             case 'log':
                 console.log(items.join(''));
                 break;
@@ -174,7 +177,7 @@ export class LocalUtils {
     };
 }
 
-type LogLevels = 'error' | 'warn' | 'debug' | 'log';
+type LogLevels = 'error' | 'warn' | 'debug' | 'log' | 'success';
 
 interface InvalidCharactersResult {
     invalid: boolean;

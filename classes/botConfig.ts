@@ -41,6 +41,7 @@ export class BotConfig {
             this.bannedPhrases = [];
             this.updateQueue.push('boo');
         }
+        LocalUtils.log('success', `botConfig - ${guildId}: Config ready.`);
     }
 
     private validateData() {

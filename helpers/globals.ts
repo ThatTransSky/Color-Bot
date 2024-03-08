@@ -2,14 +2,13 @@ import { stripIndents } from 'common-tags';
 import { LocalUtils } from './utils.js';
 import { Interaction } from 'discord.js';
 import { TempData } from '../classes/tempData.js';
-import { RoleConfig } from '../classes/roleConfig.js';
-import { BotConfig } from '../classes/botConfig.js';
 import { GuildConfigs } from '../classes/guildConfigs.js';
 import { GlobalBotConfig } from '../classes/globalBotConfig.js';
 
 export class Globals {
-    public static GUILD_ID = process.env.GUILD_ID;
+    public static MAIN_GUILD_ID = process.env.MAIN_GUILD_ID ?? undefined;
     public static CREATOR_ID = process.env.CREATOR_ID;
+    public static DEV_GUILD_ID = process.env.DEV_GUILD_ID ?? undefined;
     public static ifErrThrowCb = (err: any) => {
         if (err) throw err;
     };
@@ -18,6 +17,8 @@ export class Globals {
             'debug',
             stripIndents`
         Interaction received:
+        Created by - ${interaction.user.id} (${interaction.user.username})
+        In Guild? - ${interaction.guildId} (${interaction.guild?.name})
         Type - ${LocalUtils.interactionTypeToString(interaction)}
         ${
             interaction['customId'] !== undefined

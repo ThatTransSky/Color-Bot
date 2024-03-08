@@ -14,7 +14,7 @@ export function getRoleById(
     id: string,
     callback: (success: boolean, givenId: string, role?: Role) => void,
 ) {
-    client.guilds.fetch(Globals.GUILD_ID).then((guild) => {
+    client.guilds.fetch(Globals.MAIN_GUILD_ID).then((guild) => {
         const role = guild.roles.cache.get(id);
         role !== undefined
             ? callback(true, id, role)
@@ -50,9 +50,9 @@ export async function getRoleByName(
                       : callback(false, name);
               });
     };
-    let cachedGuild = client.guilds.cache.get(Globals.GUILD_ID);
+    let cachedGuild = client.guilds.cache.get(Globals.MAIN_GUILD_ID);
     if (cachedGuild === undefined) {
-        return client.guilds.fetch(Globals.GUILD_ID).then(findRole);
+        return client.guilds.fetch(Globals.MAIN_GUILD_ID).then(findRole);
     }
     return findRole(cachedGuild);
 }

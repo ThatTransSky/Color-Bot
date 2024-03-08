@@ -2,7 +2,27 @@
 
 (_Note: This changelog will only cover **meaningful** commits and changes_)
 
-## [Latest](https://github.com/That-TransGirl/Color-Bot/commit/master) - I really need to commit more often.
+## [Latest](https://github.com/That-TransGirl/Color-Bot/commit/master) - Dev Update (and some other stuff idk).
+
+-   **FIXED** - `applyChanges` (in [`roleMenu`](./handlers/roleMenu.ts)) no longer errors (because I forgot to make the second action row have _actual buttons_).
+-   Renamed `GUILD_ID` to `MAIN_GUILD_ID`.
+-   Added another [Global](./helpers/globals.ts) variable - `DEV_GUILD_ID`:
+    -   This variable will house the ID for the Dev's guild.
+    -   It is used for identifying which guild to register the Dev commands to.
+    -   If not set, the Dev Commands will not register for that instance.
+-   Added an identifier (although not a good one) to Dev commands:
+    -   If the command's description starts with 'Dev - ', that command will be marked as a Dev command.
+    -   For that to work (and for TypeScript's sake), modified [`CommandStructure`](./classes/CommandStructure.ts) to include the command's `description` (regardless of it's type).
+-   Added a check in [`ready`](./events/ready.ts) to seperate between Regular and Dev commands, as well as checking if `DEV_GUILD_ID` is set and valid (throwing an error if not).
+-   Added more debug info to [`interactionCreate`](./events/interactionCreate.ts) (such as 'who created the interaction', 'in what guild', 'if it's a command, what is the command name', etc.)
+-   Added a log message (in [`toggleDevMode`](./commands/toggleDevMode.ts)) for when someone toggles _off_ Dev Mode™ (because I didn't already do that for some reason).
+-   Added another case for `LocalUtils.log` - `success`.
+    -   Until now, I've used the `log` case to indicate when something was done but `success` made a lot more sense for the logs that I wanted to make.
+    -   Speaking of, logged the loading of: [`BotConfig`](./classes/botConfig.ts) (per guild), [`RoleConfig`](./classes/roleConfig.ts) (per guild) and [`GuildConfig`](./classes/guildConfigs.ts) (per guild).
+-   Modified the method `outputBypassList` (in [`GlobalBotConfig`](./classes/globalBotConfig.ts)) to not rely on `MAIN_GUILD_ID` and instead search for the users in the bypass list in each of the guilds that the bot is in.
+-   Also added a new method `bypassToString`, which is a WIP (because I'm lazy).
+
+## [69d40f5](https://github.com/That-TransGirl/Color-Bot/commit/69d40f5) - I really need to commit more often.
 
 -   Condensed every util function into one class - [`LocalUtils`](./helpers/utils.ts).
     -   Added new helper functions: `extractCustomId`, `isArrayEmpty`, `inputPredicate`, `findCurrRoute`, `invalidCharacters`.

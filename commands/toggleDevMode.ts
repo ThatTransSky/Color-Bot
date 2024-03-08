@@ -10,7 +10,7 @@ import { stripIndent } from 'common-tags';
 
 export const data = new SlashCommandBuilder()
     .setName('toggle-dev-mode')
-    .setDescription('Toggles the Dev Mode™ state of the bot.')
+    .setDescription('Dev - Toggles the Dev Mode™ state of the bot.')
     .addBooleanOption(
         new SlashCommandBooleanOption()
             .setName('state')
@@ -54,6 +54,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             Limiting access to the following users:`,
         );
         Globals.globalBotConfig.outputBypassList(interaction.client);
+    } else {
+        LocalUtils.log(
+            'warn',
+            `Dev Mode™ toggled off by ${interaction.user.displayName} (id: ${interaction.user.id})!`,
+        );
     }
     return await interaction.editReply({
         content: `Dev Mode™ successfully set to ${inlineCode(

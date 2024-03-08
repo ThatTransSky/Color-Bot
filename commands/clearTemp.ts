@@ -19,7 +19,7 @@ import { LocalUtils } from '../helpers/utils.js';
 
 export const data = new SlashCommandBuilder()
     .setName('clear-temp')
-    .setDescription("Clears the bot's cache.");
+    .setDescription("Dev - Clears the bot's cache.");
 
 export async function execute(
     interaction: ChatInputCommandInteraction,

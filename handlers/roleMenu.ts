@@ -870,12 +870,35 @@ async function applyChangesStage(
             rolesToAdd.length !== 0
                 ? roleConfig.getRole({ id: rolesToAdd[0] }).type
                 : roleConfig.getRole({ id: rolesToRemove[0] }).type;
-        const firstButtonRow = newButtonRow(customIdObj.mainAction);
+        const firstButtonRow = newButtonRow(customIdObj.mainAction, false);
         firstButtonRow.setComponents([
             ...nextPreviousAndCurrentButtons(roleConfig, customIdObj, roleType),
         ]);
-        const secondButtonRow = newButtonRow(customIdObj.mainAction);
-        secondButtonRow.setComponents([]);
+        const secondButtonRow = newButtonRow(customIdObj.mainAction, true);
+        secondButtonRow.setComponents([
+            new ButtonBuilder()
+                .setStyle(ButtonStyle.Secondary)
+                .setLabel('Back: Category Selection')
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        stage: 'selectType',
+                        anythingElse: ['back'],
+                    }),
+                ),
+            new ButtonBuilder()
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        secondaryAction: 'start',
+                        stage: 'startRoleMenu',
+                        anythingElse: ['back'],
+                    }),
+                )
+                .setLabel('Restart: Main Menu')
+                .setStyle(ButtonStyle.Secondary),
+            ...secondButtonRow.components,
+        ]);
         if (rolesToAdd.length !== 0) {
             await memberRoles.add(rolesToAdd, 'Role Bot');
         }

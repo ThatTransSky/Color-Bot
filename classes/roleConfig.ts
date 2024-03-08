@@ -59,12 +59,13 @@ export class RoleConfig {
             this.multiRoleTypeNames = this.types.map((type) => {
                 if (type?.multiRoleType) return type?.value;
             });
-            return this.validateData();
+            this.validateData();
         } catch (err) {
             this.types = [];
             this.multiRoleTypeNames = [];
             this.updateFile();
         }
+        LocalUtils.log('success', `roleConfig - ${guildId}: Config ready.`);
     }
     public getType(typeName: string): StoredType {
         return this.types.find(

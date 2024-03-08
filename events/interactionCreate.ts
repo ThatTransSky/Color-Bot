@@ -25,7 +25,7 @@ export async function execute(
                     The bot is currently in Dev Mode™.
                     That usually means that the developer (${userMention(
                         Globals.CREATOR_ID,
-                    )}) is currently working on the bot.
+                    )}) (or someone from the team) is currently working on the bot.
                     Feel free to dm them or try again later.
                     `,
                 ephemeral: true,
@@ -42,8 +42,11 @@ export async function execute(
                 );
                 return;
             }
-
-            return await command.execute(interaction);
+            LocalUtils.log(
+                'debug',
+                `Command Name - ${interaction.commandName}`,
+            );
+            return await command.execute(interaction, client);
         } else if (interaction.isContextMenuCommand()) {
             return;
         }

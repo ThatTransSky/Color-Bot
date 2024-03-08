@@ -25,7 +25,7 @@ export class GuildConfigs {
             );
             return;
         }
-        client.guilds.cache.forEach((_, guildId) => {
+        client.guilds.cache.forEach((guild, guildId) => {
             try {
                 mkdirSync(this.makePath(guildId));
             } catch (err) {}
@@ -33,6 +33,10 @@ export class GuildConfigs {
                 botConfig: new BotConfig(guildId),
                 roleConfig: new RoleConfig(guildId),
             });
+            LocalUtils.log(
+                'success',
+                `Config for ${guildId} (${guild.name}) successfully loaded.`,
+            );
         });
     }
 }

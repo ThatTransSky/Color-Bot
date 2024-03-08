@@ -1,4 +1,4 @@
-import { Client } from 'discord.js';
+import { Client, User } from 'discord.js';
 import { readFileSync, writeFile } from 'fs';
 import { Globals } from '../helpers/globals.js';
 import { LocalUtils } from '../helpers/utils.js';
@@ -37,10 +37,22 @@ export class GlobalBotConfig {
 
     public async outputBypassList(client: Client | ClientWithCommands) {
         const bypassIds = this.devModeBypassIdList;
-        const mainGuild = await client.guilds.fetch(Globals.GUILD_ID);
-        const creatorUser = (
-            await mainGuild.members.fetch({ user: Globals.CREATOR_ID })
-        ).user;
+        const clientGuilds = client.guilds.cache;
+        let found = false;
+        let mainGuildId = '';
+        let creatorUser: User;
+        let index = 0;
+        while (clientGuilds.toJSON().length > index) {
+            if (found) break;
+            const guildMembers = clientGuilds.at(index).members;
+            const user = (await guildMembers.fetch()).get(
+                Globals.CREATOR_ID,
+            )?.user;
+            if (user === undefined) continue;
+            creatorUser = user;
+            found = true;
+            index++;
+        }
         LocalUtils.log(
             'warn',
             `displayName: ${creatorUser.displayName}, userName: ${creatorUser.username}, id: ${creatorUser.id}`,
@@ -48,11 +60,20 @@ export class GlobalBotConfig {
         if (bypassIds.length === 0) return;
         let id = bypassIds.shift();
         while (id !== undefined) {
-            const user = (await mainGuild.members.fetch({ user: id }))?.user;
-            if (user !== undefined) {
+            let user: User;
+            clientGuilds.forEach((guild) => {
+                user = guild.members.cache.get(id)?.user;
+                if (user !== undefined) {
+                    LocalUtils.log(
+                        'warn',
+                        `displayName: ${user.displayName}, userName: ${user.username}, id: ${id}`,
+                    );
+                }
+            });
+            if (user === undefined) {
                 LocalUtils.log(
                     'warn',
-                    `displayName: ${user.displayName}, userName: ${user.username}, id: ${user.id}`,
+                    `displayName: unknown, userName: unknown, id: ${id}`,
                 );
             }
             id = bypassIds.shift();
@@ -61,6 +82,24 @@ export class GlobalBotConfig {
 
     public isOnBlacklist(userId: string) {
         return this.devModeIdBlacklist.findIndex((id) => id === userId) !== -1;
+    }
+
+    public async bypassListToString(
+        client: Client | ClientWithCommands,
+        cb: (bypassList: string) => void,
+    ) {
+        const bypassStrArr: string[] = [];
+        const clientGuilds = client.guilds.cache;
+        let found = false;
+        let guildId: string;
+        clientGuilds.forEach((guild, id) => {
+            if (found) return;
+            if (guild.members.cache.has(Globals.CREATOR_ID)) {
+                guildId = id;
+                found = true;
+            }
+        });
+        // const addDetailsToArr = ()
     }
 
     private validateData() {
