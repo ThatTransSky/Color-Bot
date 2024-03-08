@@ -2,8 +2,9 @@
 
 (_Note: This changelog will only cover **meaningful** commits and changes_)
 
-## [Latest](https://github.com/That-TransGirl/Color-Bot/commit/master) - Dev Update (and some other stuff idk).
+## [Latest](https://github.com/That-TransGirl/Color-Bot/commit/24e8f14) - Dev Update (and some other stuff idk).
 
+-   [HOTFIX](https://github.com/That-TransGirl/Color-Bot/commit/master) - Removed a log that I forgot to delete lol.
 -   **FIXED** - `applyChanges` (in [`roleMenu`](./handlers/roleMenu.ts)) no longer errors (because I forgot to make the second action row have _actual buttons_).
 -   Renamed `GUILD_ID` to `MAIN_GUILD_ID`.
 -   Added another [Global](./helpers/globals.ts) variable - `DEV_GUILD_ID`:

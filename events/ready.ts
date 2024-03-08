@@ -58,10 +58,6 @@ export async function execute(client: ClientWithCommands) {
             `DEV_GUILD_ID is valid, directing dev commands to guild '${devGuild.name}' (${DEV_GUILD_ID}).`,
         );
     }
-    LocalUtils.log(
-        'debug',
-        LocalUtils.jsonString(regularCommands.toJSON(), true),
-    );
     if (process.env.ENV.toLowerCase() === 'production') {
         rest.put(Routes.applicationCommands(CLIENT_ID), {
             body: regularCommands,
