@@ -2,7 +2,7 @@ import { stripIndent } from 'common-tags';
 import { readFileSync, writeFile } from 'fs';
 import { Client, Role } from 'discord.js';
 import { EventEmitter } from 'events';
-import { getRoleById, getRoleByName } from '../helpers/discordHelpers.js';
+import { doesHaveAdminPerms, getRoleById } from '../helpers/discordHelpers.js';
 import { newEmbed } from '../helpers/componentBuilders.js';
 import { LocalUtils } from '../helpers/utils.js';
 
@@ -59,7 +59,7 @@ export class RoleConfig {
             this.multiRoleTypeNames = this.types.map((type) => {
                 if (type?.multiRoleType) return type?.value;
             });
-            this.validateData();
+            this.validateStoredTypes();
         } catch (err) {
             this.types = [];
             this.multiRoleTypeNames = [];
@@ -67,30 +67,84 @@ export class RoleConfig {
         }
         LocalUtils.log('success', `roleConfig - ${guildId}: Config ready.`);
     }
-    public getType(typeName: string): StoredType {
+
+    public getType(typeValue: string): StoredType {
         return this.types.find(
-            (type) => type?.value.toLowerCase() === typeName.toLowerCase(),
+            (type) => type?.value.toLowerCase() === typeValue.toLowerCase(),
         );
     }
 
-    private validateData(): this {
-        this.types.forEach((type) => {
-            if (type?.multiRoleType) {
+    public findTypeIndex(typeValue: string) {
+        return this.types.findIndex(
+            (type) => type?.value.toLowerCase() === typeValue.toLowerCase(),
+        );
+    }
+
+    private validateStoredTypes(): this {
+        this.types.forEach((type, i) => {
+            if (type === undefined || type === null) return;
+            if (
+                !LocalUtils.isArrayEmpty(type.roles) &&
+                type.roles.length > 25 /** Discord's hard limit */
+            ) {
+                LocalUtils.log(
+                    'error',
+                    `validateStoredTypes (guildId: ${this.guildId}) - '${type.label}'.roles has more roles than Discord's hard limit.\nDiscord will only display the first 25 roles.`,
+                );
+            }
+            if (type.multiRoleType) {
                 let { minChoices, maxChoices } = type;
                 // min is required, max is optional.
+                if (minChoices === undefined && maxChoices === undefined) {
+                    return (this.types[i] = {
+                        ...type,
+                        minChoices: 1,
+                        maxChoices: type.roles?.length ?? 25, // Discord's hard limit
+                    });
+                }
                 if (minChoices === undefined || minChoices <= 0) {
                     minChoices = 1;
                 }
                 if (maxChoices !== undefined && minChoices > maxChoices) {
                     maxChoices = minChoices;
                 }
-                type = {
+                if (
+                    maxChoices !== undefined &&
+                    !LocalUtils.isArrayEmpty(type.roles) &&
+                    maxChoices > type.roles?.length
+                ) {
+                    LocalUtils.log(
+                        `warn`,
+                        `validateStoredTypes (guildId: ${this.guildId}) - '${type.label}'.maxChoices is bigger than its' roles array.\nCorrecting to roles' length...`,
+                    );
+                    maxChoices =
+                        type.roles?.length <= 25 ? type.roles.length : 25;
+                }
+                if (maxChoices === undefined && minChoices !== undefined) {
+                    maxChoices = type.roles?.length ?? 25; // Discord hard limit
+                }
+                return (this.types[i] = {
                     ...type,
                     minChoices: minChoices,
                     maxChoices: maxChoices,
-                };
+                });
+            } else {
+                if (
+                    type.minChoices !== undefined ||
+                    type.maxChoices !== undefined
+                ) {
+                    delete type.minChoices;
+                    delete type.maxChoices;
+                }
+                return (this.types[i] = {
+                    ...type,
+                    multiRoleType: false,
+                });
             }
         });
+        this.types = this.types.filter(
+            (type) => type !== undefined && type !== null,
+        );
         this.updateFile();
         return this;
     }
@@ -117,32 +171,12 @@ export class RoleConfig {
                 this.removeRole(storedRole);
             } else this.updateRole(storedRole, fetchedRole);
         };
-        const gotRoleByName = (
-            success: boolean,
-            givenName: string,
-            fetchedRole?: Role,
-        ) => {
-            const storedRole = this.getRole({ name: givenName });
-            if (!success) {
-                if (storedRole === undefined) return;
-                discordClient.emit(
-                    'warn',
-                    stripIndent`
-                    verifier (name) - Role exists on file but not in guild.
-                    id: ${storedRole.id ?? undefined}
-                    name: ${storedRole.value ?? 'undefined?'}
-                    Removing...
-                    `,
-                );
-                this.removeRole(storedRole);
-            } else this.updateRole(storedRole, fetchedRole);
-        };
         ev.once('ready', () => {
             this.types.forEach((type) => {
-                if (type?.roles?.length === 0) {
+                if (LocalUtils.isArrayEmpty(type.roles)) {
                     LocalUtils.log(
                         'warn',
-                        `${type?.label} exists but has no roles`,
+                        `verifyStoredRoles (guildId: ${this.guildId}) - Type '${type?.label}' exists but has no roles`,
                     );
                     return;
                 }
@@ -151,11 +185,17 @@ export class RoleConfig {
                     role.type = type?.value.toLowerCase();
                     role.id !== undefined
                         ? getRoleById(discordClient, role.id, gotRoleById)
-                        : getRoleByName(
-                              discordClient,
-                              role.value,
-                              gotRoleByName,
-                          );
+                        : (() => {
+                              discordClient.emit(
+                                  'warn',
+                                  stripIndent`
+                                  verifier - Role doesn't have an id on file:
+                                  name: ${role.label ?? 'undefined?'}
+                                  Removing...
+                                  `,
+                              );
+                              this.removeRole(role);
+                          })();
                 });
             });
         });
@@ -194,21 +234,46 @@ export class RoleConfig {
         return {
             label: storedRole.label,
             value: storedRole.id,
-            description:
-                storedRole.description !== undefined
-                    ? storedRole.description
-                    : undefined,
+            description: !LocalUtils.isStringEmpty(storedRole.description)
+                ? storedRole.description
+                : undefined,
         };
     }
 
     public convertTypesToOptions() {
         return this.types.map((type) => {
+            if (type === undefined || type === null) return;
             return {
-                label: type?.label,
-                description: type?.description ?? undefined,
-                value: type?.value,
+                label: type.label,
+                description: LocalUtils.isStringEmpty(type.description)
+                    ? undefined
+                    : type.description,
+                value: type.value,
             };
         });
+    }
+
+    public getTotalTypelessRoles(roles: Role[]) {
+        return roles.filter(
+            (role) =>
+                this.types.filter(
+                    (type) =>
+                        type.roles.findIndex(
+                            (storedRole) => storedRole.id === role.id,
+                        ) !== -1,
+                ).length === 0 && !doesHaveAdminPerms(role),
+        ).length;
+    }
+
+    public isRoleInAnyType(roleToFind: StoredRole) {
+        return (
+            this.types.filter(
+                (type) =>
+                    !LocalUtils.isArrayEmpty(type.roles) &&
+                    type.roles.find((role) => role.id === roleToFind.id) !==
+                        undefined,
+            ).length > 0
+        );
     }
 
     public removeRole(storedRole: StoredRole) {
@@ -281,7 +346,6 @@ export class RoleConfig {
         success: boolean;
         reason?: 'typeValueAlreadyExists';
     } {
-        LocalUtils.log('log', LocalUtils.jsonString(type, true));
         // Meaning, if the 'value' was not already lowercased
         type = this.lowercaseTypeValue(type);
         if (this.getType(type?.value) !== undefined)
@@ -289,22 +353,96 @@ export class RoleConfig {
                 success: true,
                 reason: 'typeValueAlreadyExists',
             };
+        if (!type.multiRoleType) type.multiRoleType = false;
+        if (LocalUtils.isStringEmpty(type.description)) {
+            type.description = undefined;
+        }
         this.types.push(type);
         if (!LocalUtils.isArrayEmpty(roles)) {
             roles?.forEach((role, i) => {
                 role.type = type?.value;
                 roles[i] = role;
             });
-            this.types[
-                this.types.findIndex(
-                    (storedType) => storedType.value === type?.value,
-                )
-            ].roles = roles;
-        }
+        } else if (LocalUtils.isArrayEmpty(type.roles)) roles = [];
+        this.types[this.findTypeIndex(type.value)].roles = roles;
+        LocalUtils.log(
+            'success',
+            stripIndent`
+            Successfully added a new type:
+            ${LocalUtils.jsonString(type, true)}
+            `,
+        );
         this.updateFile();
         return {
             success: true,
         };
+    }
+
+    public editType(currType: StoredType, editedType: StoredType) {
+        const typeIndex = this.findTypeIndex(currType.value);
+        if (typeIndex === -1) {
+            LocalUtils.log(
+                'error',
+                `editType - originalType.value (${currType.value}) could not be found, creating a new type instead using editedType`,
+            );
+            this.addType(editedType);
+            return;
+        }
+        this.types[typeIndex] = editedType;
+        LocalUtils.log(
+            'success',
+            stripIndent`
+            Successfully edited a type:
+            Name - ${currType.label} ${
+                !LocalUtils.isStringSame(currType.label, editedType.label)
+                    ? `---> ${editedType.label}`
+                    : ''
+            }
+            Description - ${currType.description ?? undefined} ${
+                !LocalUtils.isStringSame(
+                    currType.description,
+                    editedType.description,
+                )
+                    ? `---> ${editedType.description}`
+                    : ''
+            }
+            Value - ${currType.value} ${
+                !LocalUtils.isStringSame(currType.value, editedType.value)
+                    ? `---> ${editedType.value}`
+                    : ''
+            }
+            isMultiRole - ${currType.multiRoleType} ${
+                currType.multiRoleType !== editedType.multiRoleType
+                    ? `---> ${editedType.multiRoleType}`
+                    : ''
+            }
+            minChoices - ${currType.minChoices} ${
+                currType.minChoices !== editedType.minChoices
+                    ? `---> ${editedType.minChoices}`
+                    : ''
+            }
+            maxChoices - ${currType.maxChoices} ${
+                currType.maxChoices !== editedType.maxChoices
+                    ? `---> ${editedType.maxChoices}`
+                    : ''
+            }
+            `,
+        );
+        this.updateFile();
+    }
+
+    public removeType(typeToRemove: StoredType) {
+        const index = this.findTypeIndex(typeToRemove.value);
+        if (index === -1) return;
+        delete this.types[index];
+        LocalUtils.log(
+            'success',
+            stripIndent`
+            Successfully removed a type:
+            ${LocalUtils.jsonString(typeToRemove, true)}
+            `,
+        );
+        this.updateFile();
     }
 
     public updateRole(storedRole: StoredRole, fetchedRole: Role) {
@@ -339,6 +477,7 @@ export class RoleConfig {
     }
 
     private updateFile() {
+        this.types = this.types.filter((type) => type !== undefined);
         const data = { roleTypes: this.types };
         const objStr = LocalUtils.jsonString(data, true);
         writeFile(
@@ -353,11 +492,11 @@ export class RoleConfig {
 
     private lowercaseTypeValue(type: StoredType): StoredType {
         if (type?.value !== type?.value.toLowerCase()) {
-            const stack = new Error('Stack for reference');
+            const stack = new Error();
             LocalUtils.log(
                 'warn',
                 stripIndent`
-                RoleConstants - WARN: type?.value was passed before being lowercased.
+                RoleConfig - WARN: type.value was passed before being lowercased.
                 Please refer to the stack below:
                 ${stack}
                 `,

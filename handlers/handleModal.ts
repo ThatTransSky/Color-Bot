@@ -23,6 +23,7 @@ import { stripIndent } from 'common-tags';
 import { LocalUtils } from '../helpers/utils.js';
 import { emptyReply, getIdentifiers } from '../helpers/discordHelpers.js';
 import { RegexConstants } from '../classes/regexConstants.js';
+import { Route } from '../classes/routes.js';
 
 export async function routeModalInteractions(
     interaction: ModalSubmitInteraction,
@@ -30,26 +31,21 @@ export async function routeModalInteractions(
     customIdObj: CustomIdObj,
 ) {
     await interaction.deferUpdate();
-    const routes: {
-        stage: string;
-        execute: (
-            interaction: ModalSubmitInteraction,
-            client: Client,
-            customIdObj: CustomIdObj,
-        ) => void;
-    }[] = [
+    const routes: Route[] = [
         {
             stage: 'verifyTypeDetails',
             execute: verifyTypeDetails,
+        },
+        {
+            stage: 'verifyEditedTypeDetails',
+            execute: verifyEditedTypeDetails,
         },
         {
             stage: 'verifyMinMax',
             execute: verifyMinMaxStage,
         },
     ];
-    const currRoute = LocalUtils.findCurrRoute(customIdObj, routes);
-    if (currRoute === undefined) return;
-    return currRoute.execute(interaction, client, customIdObj);
+    LocalUtils.execCurrRoute(interaction, client, customIdObj, routes);
 }
 
 async function verifyTypeDetails(
@@ -69,9 +65,7 @@ async function verifyTypeDetails(
     };
     textInputs.forEach((row) => {
         const label = row.components.find(inputPredicate('label'))?.value;
-        typeDetails.label = (
-            label !== undefined ? label : typeDetails.label
-        ).toLowerCase();
+        typeDetails.label = label !== undefined ? label : typeDetails.label;
         const description = row.components.find(
             inputPredicate('description'),
         )?.value;
@@ -85,21 +79,24 @@ async function verifyTypeDetails(
         RegexConstants.charactersAndNumbers,
     );
     if (testResults.invalid) {
-        const buttonRow = newButtonRow('roles', true);
-        buttonRow.setComponents(
-            new ButtonBuilder()
-                .setCustomId(
-                    LocalUtils.buildCustomId({
-                        ...customIdObj,
-                        stage: 'newType',
-                        anythingElse: [],
-                    }),
-                )
-                .setLabel('Try again')
-                .setStyle(ButtonStyle.Primary),
-            backButton(customIdObj, 'startMessage'),
-            ...buttonRow.components,
+        const tryAgainRow = newButtonRow(
+            'roles',
+            [
+                new ButtonBuilder()
+                    .setCustomId(
+                        LocalUtils.buildCustomId({
+                            ...customIdObj,
+                            stage: 'newType',
+                            anythingElse: [],
+                        }),
+                    )
+                    .setLabel('Try again')
+                    .setStyle(ButtonStyle.Primary),
+                backButton(customIdObj, 'startMessage'),
+            ],
+            true,
         );
+
         let invalidInputs = testResults.props
             .filter((input) => input.invalid)
             .map((input) => input.name.toLowerCase())
@@ -113,8 +110,10 @@ async function verifyTypeDetails(
                         return input;
                 }
             });
-        const embed = new EmbedBuilder(interaction.message.embeds[0]);
-        embed.setDescription(`
+        const invalidCharsEmbed = new EmbedBuilder(
+            interaction.message.embeds[0],
+        );
+        invalidCharsEmbed.setDescription(`
         ${italic(stripIndent`
             The following inputs (${inlineCode(
                 `${invalidInputs.join(', ')}`,
@@ -124,44 +123,8 @@ async function verifyTypeDetails(
         `);
 
         return await interaction.editReply({
-            embeds: [embed],
-            components: [buttonRow],
-        });
-    }
-    const { roleConfig } = Globals.guildConfigs.guilds.get(interaction.guildId);
-    if (roleConfig.getType(typeDetails.value) !== undefined) {
-        const buttonRow = newButtonRow('roles', true);
-        buttonRow.setComponents(
-            new ButtonBuilder().setCustomId(
-                LocalUtils.buildCustomId({
-                    ...customIdObj,
-                    stage: 'viewTypeDetails',
-                    anythingElse: [typeDetails.value],
-                }),
-            ),
-            new ButtonBuilder()
-                .setCustomId(
-                    LocalUtils.buildCustomId({
-                        ...customIdObj,
-                        stage: 'newType',
-                        anythingElse: [],
-                    }),
-                )
-                .setLabel('Try again')
-                .setStyle(ButtonStyle.Primary),
-            backButton(customIdObj, 'startMessage'),
-            ...buttonRow.components,
-        );
-        return await interaction.editReply({
-            ...emptyReply,
-            content: stripIndent`
-            The unique name '${inlineCode(typeDetails.value)}' is already taken.
-            Please choose a different one.
-            
-            Alternatively, you can check if the category you're trying to create already exists.
-            Click 'View Category' to do so.
-            `,
-            components: [buttonRow],
+            embeds: [invalidCharsEmbed],
+            components: [tryAgainRow],
         });
     }
     const identifiers = {
@@ -169,6 +132,11 @@ async function verifyTypeDetails(
         messageId: interaction.message.id,
         userId: interaction.user.id,
     };
+    let valueWasNotLowercased = false;
+    if (typeDetails.value !== typeDetails.value.toLowerCase()) {
+        typeDetails.value = typeDetails.value.toLowerCase();
+        valueWasNotLowercased = true;
+    }
     const savedData = {
         manageRoles: {
             typeDetails,
@@ -180,13 +148,62 @@ async function verifyTypeDetails(
         expire: Date.now() + 15000 * 60,
     };
     Globals.tempData.addOrUpdateData(dataToSave);
+    const { roleConfig } = Globals.guildConfigs.guilds.get(interaction.guildId);
+    if (roleConfig.getType(typeDetails.value) !== undefined) {
+        const editOrTryAgainRow = newButtonRow(
+            customIdObj.mainAction,
+            [
+                new ButtonBuilder()
+                    .setCustomId(
+                        LocalUtils.buildCustomId({
+                            ...customIdObj,
+                            stage: 'editType',
+                            anythingElse: [],
+                        }),
+                    )
+                    .setLabel('Edit Category')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(
+                        LocalUtils.buildCustomId({
+                            ...customIdObj,
+                            stage: 'newType',
+                            anythingElse: [],
+                        }),
+                    )
+                    .setLabel('Try again')
+                    .setStyle(ButtonStyle.Secondary),
+                backButton(customIdObj, 'startMessage'),
+            ],
+            true,
+        );
+        return await interaction.editReply({
+            ...emptyReply,
+            content: stripIndent`
+            The unique name '${inlineCode(typeDetails.value)}' is already taken.
+            Please choose a different one.
+            
+            Alternatively, you can edit the existing category you're trying to create.
+            Click 'Edit Category' to do so.
+            `,
+            components: [editOrTryAgainRow],
+        });
+    }
     const confirmationEmbed = newEmbed(
         'Role Menu',
         stripIndent`
+        ${
+            valueWasNotLowercased
+                ? italic(
+                      `(Note: The category's Unique Name has to be lowercased and has been converted)`,
+                  )
+                : ''
+        }
+
         Category details:
         Name - ${inlineCode(typeDetails.label)}
         Description - ${inlineCode(
-            typeDetails.description !== ''
+            !LocalUtils.isStringEmpty(typeDetails.description)
                 ? typeDetails.description
                 : 'No description provided.',
         )}
@@ -198,8 +215,7 @@ async function verifyTypeDetails(
         'Random',
     );
 
-    const buttonRow = newButtonRow('roles');
-    buttonRow.setComponents([
+    const isMultiRoleRow = newButtonRow('roles', [
         new ButtonBuilder()
             .setCustomId(
                 LocalUtils.buildCustomId({
@@ -220,13 +236,182 @@ async function verifyTypeDetails(
             )
             .setLabel('No')
             .setStyle(ButtonStyle.Danger),
-        ...buttonRow.components,
     ]);
 
     return await interaction.editReply({
         content: '',
         embeds: [confirmationEmbed],
-        components: [buttonRow],
+        components: [isMultiRoleRow],
+    });
+}
+
+async function verifyEditedTypeDetails(
+    interaction: ModalSubmitInteraction,
+    client: Client,
+    customIdObj: CustomIdObj,
+) {
+    const textInputs = interaction.components;
+    const inputPredicate =
+        (inputName: string) => (input: TextInputModalData) => {
+            return input.customId === inputName;
+        };
+
+    /**
+     * Keeping this line here as a reminder:
+     * !GETTING AN OBJECT RETURNS A REFERENCE TO THEM
+     *
+     * I lost so much sleep over this...
+     */
+    let currType = Globals.tempData.getData(getIdentifiers(interaction))
+        .savedData.manageRoles.typeDetails;
+    let editedType: StoredType = {
+        ...currType,
+        label: '',
+        description: undefined,
+        value: '',
+    };
+    let label = '';
+    let description = undefined;
+    let value = '';
+    textInputs.forEach((row) => {
+        if (LocalUtils.isStringEmpty(label)) {
+            label = row.components.find(inputPredicate('label'))?.value;
+            editedType.label = label !== undefined ? label : '';
+        }
+        if (LocalUtils.isStringEmpty(description)) {
+            description = row.components.find(
+                inputPredicate('description'),
+            )?.value;
+            editedType.description =
+                description !== undefined ? description : undefined;
+        }
+        if (LocalUtils.isStringEmpty(value)) {
+            value = row.components.find(inputPredicate('value'))?.value;
+            editedType.value = value !== undefined ? value : '';
+        }
+    });
+    const testResults = LocalUtils.invalidCharacters(
+        {
+            label: editedType.label,
+            value: editedType.value,
+        },
+        RegexConstants.charactersAndNumbers,
+    );
+    // Fail state
+    if (testResults.invalid) {
+        const tryAgainRow = newButtonRow(
+            'roles',
+            [
+                new ButtonBuilder()
+                    .setCustomId(
+                        LocalUtils.buildCustomId({
+                            ...customIdObj,
+                            stage: 'editType',
+                            anythingElse: [],
+                        }),
+                    )
+                    .setLabel('Try again')
+                    .setStyle(ButtonStyle.Primary),
+                backButton(customIdObj, 'viewType'),
+            ],
+            true,
+        );
+
+        let invalidInputs = testResults.props
+            .filter((input) => input.invalid)
+            .map((input) => input.name.toLowerCase())
+            .map((input) => {
+                switch (input) {
+                    case 'label':
+                        return 'Name';
+                    case 'value':
+                        return 'Unique Name';
+                    default:
+                        return input;
+                }
+            });
+        const invalidCharsEmbed = new EmbedBuilder(
+            interaction.message.embeds[0],
+        );
+        invalidCharsEmbed.setDescription(`
+        ${italic(stripIndent`
+            The following inputs (${inlineCode(
+                `${invalidInputs.join(', ')}`,
+            )}) were invalid.
+            Keep in mind that only numbers and letters are allowed.
+            `)}
+        `);
+
+        return await interaction.editReply({
+            embeds: [invalidCharsEmbed],
+            components: [tryAgainRow],
+        });
+    }
+
+    let valueWasNotLowercased = false;
+    if (editedType.value !== editedType.value.toLowerCase()) {
+        editedType.value = editedType.value.toLowerCase();
+        valueWasNotLowercased = true;
+    }
+    Globals.tempData.updateTypeInData(
+        getIdentifiers(interaction),
+        editedType,
+        'edit',
+    );
+    const confirmationEmbed = newEmbed(
+        'Role Menu',
+        stripIndent`
+        ${
+            valueWasNotLowercased
+                ? italic(
+                      `(Note: The category's Unique Name has to be lowercased and has been converted)`,
+                  )
+                : ''
+        }
+
+        Category details:
+
+        Name - ${inlineCode(editedType.label)} 
+        Description - ${inlineCode(
+            !LocalUtils.isStringEmpty(editedType.description)
+                ? editedType.description
+                : 'No description provided.',
+        )}
+        Unique Name - ${inlineCode(editedType.value)}
+        
+        Is this correct?
+        `,
+        true,
+        'Random',
+    );
+
+    const isCorrectRow = newButtonRow('roles', [
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'finishedEditingType',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('Yes')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(
+                LocalUtils.buildCustomId({
+                    ...customIdObj,
+                    stage: 'editType',
+                    anythingElse: [],
+                }),
+            )
+            .setLabel('No')
+            .setStyle(ButtonStyle.Danger),
+    ]);
+
+    return await interaction.editReply({
+        content: '',
+        embeds: [confirmationEmbed],
+        components: [isCorrectRow],
     });
 }
 
@@ -236,7 +421,7 @@ async function verifyMinMaxStage(
     customIdObj: CustomIdObj,
 ) {
     let minChoices: number = 1;
-    let maxChoices: number = undefined;
+    let maxChoices: number = 25;
     const { components } = interaction;
     let anyValueNotNumber = false;
     components.forEach((row) => {
@@ -252,12 +437,8 @@ async function verifyMinMaxStage(
             maxChoices = Number(max);
         }
     });
-    const verifyMinMaxEmbed = newEmbed(
-        'Role Menu',
-        `${escapeEscape('______________')}`,
-        true,
-        'Random',
-    );
+
+    const verifyMinMaxEmbed = newEmbed('Role Menu', ``, true, 'Random');
 
     // Fail State
     if (anyValueNotNumber) {
@@ -267,20 +448,22 @@ async function verifyMinMaxStage(
             Invalid inputs detected, only numbers are allowed.
             `),
         );
-        const buttonRow = newButtonRow('roles', true);
-        buttonRow.setComponents(
-            new ButtonBuilder()
-                .setCustomId(
-                    LocalUtils.buildCustomId({
-                        ...customIdObj,
-                        stage: 'minMaxChoices',
-                        anythingElse: [],
-                    }),
-                )
-                .setLabel('Try again')
-                .setStyle(ButtonStyle.Primary),
-            backButton(customIdObj, 'startMessage').setLabel('Restart'),
-            ...buttonRow.components,
+        const buttonRow = newButtonRow(
+            'roles',
+            [
+                new ButtonBuilder()
+                    .setCustomId(
+                        LocalUtils.buildCustomId({
+                            ...customIdObj,
+                            stage: 'minMaxChoices',
+                            anythingElse: [],
+                        }),
+                    )
+                    .setLabel('Try again')
+                    .setStyle(ButtonStyle.Primary),
+                backButton(customIdObj, 'startMessage').setLabel('Restart'),
+            ],
+            true,
         );
         return await interaction.editReply({
             content: '',
@@ -294,9 +477,9 @@ async function verifyMinMaxStage(
         ${italic(
             codeBlock(
                 stripIndent`
-            NOTE: The input for minimum choices was below 1, which is not allowed.
-            Reverting to defaults (1).
-            `,
+                NOTE: The input for minimum choices was below 1, which is not allowed.
+                Reverting to defaults (1).
+                `,
             ),
         )}
         ${
@@ -306,14 +489,14 @@ async function verifyMinMaxStage(
         }`);
     }
     if (maxChoices < minChoices) {
-        maxChoices = 0;
+        maxChoices = 25;
         verifyMinMaxEmbed.setDescription(stripIndent`
         ${italic(
             codeBlock(
                 stripIndent`
-            NOTE: The input for maximum choices was below the set minimum choices, which is not allowed.
-            Reverting to defaults (no limit).
-            `,
+                NOTE: The input for maximum choices was below the set minimum choices, which is not allowed.
+                Reverting to defaults (25).
+                `,
             ),
         )}
         ${
@@ -349,7 +532,7 @@ async function verifyMinMaxStage(
             },
         },
     });
-    const buttonRow = newButtonRow('roles').setComponents([
+    const buttonRow = newButtonRow('roles', [
         new ButtonBuilder()
             .setCustomId(
                 LocalUtils.buildCustomId({

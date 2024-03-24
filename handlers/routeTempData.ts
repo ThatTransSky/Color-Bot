@@ -36,7 +36,7 @@ async function clearTempDataStage(
     customIdObj: CustomIdObj,
 ) {
     Globals.tempData.clearData();
-    if (Globals.tempData.countTotalData()) {
+    if (Globals.tempData.countTotalData() !== 0) {
         return await interaction.editReply({
             content:
                 'There was an error clearing data. Please try again later.',
@@ -60,9 +60,7 @@ async function clearTempDataStage(
         components: [],
     });
 
-    Globals.tempData.addOrUpdateData({
-        identifiers: getIdentifiers(interaction),
-    });
+    setTimeout(() => interaction.deleteReply(), 5000);
 }
 
 async function bombHasBeenDefused(

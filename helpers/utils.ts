@@ -1,8 +1,17 @@
 import ch from 'chalk';
 import { debugEnabled } from '../main.js';
-import { Interaction, TextInputModalData } from 'discord.js';
+import {
+    AnySelectMenuInteraction,
+    ButtonInteraction,
+    Client,
+    Interaction,
+    ModalSubmitInteraction,
+    TextInputModalData,
+} from 'discord.js';
 import { CustomIdObj } from './componentBuilders.js';
 import { Route } from '../classes/routes.js';
+
+let debugAlterSwitch = 0;
 
 export class LocalUtils {
     public static jsonParse = <T>(jsonString: string): T => {
@@ -23,8 +32,15 @@ export class LocalUtils {
                 break;
             case 'debug':
                 debugEnabled
-                    ? console.log(ch.whiteBright(ch.bgGray(items.join(''))))
+                    ? debugAlterSwitch === 0
+                        ? console.log(
+                              ch.yellow(ch.bgBlueBright(items.join(''))),
+                          )
+                        : console.log(ch.yellow(ch.bgBlue(items.join(''))))
                     : '';
+                debugAlterSwitch === 0
+                    ? (debugAlterSwitch = 1)
+                    : (debugAlterSwitch = 0);
                 break;
             case 'warn':
                 console.log(ch.yellowBright(items.join('')));
@@ -92,9 +108,16 @@ export class LocalUtils {
         };
     };
 
-    public static isArrayEmpty = (arr: any[]) => {
-        return arr === undefined || arr.length === 0;
-    };
+    public static isArrayEmpty = (arr: any[]) =>
+        arr === undefined || arr.length === 0;
+
+    public static isStringEmpty = (string: string) =>
+        string === undefined || string === '';
+
+    public static isStringSame = (str1: string, str2: string) =>
+        (str1 === undefined && str2 === undefined) ||
+        str1?.toLowerCase().trim().replace(' ', '') ===
+            str2?.toLowerCase().trim().replace(' ', '');
 
     public static inputPredicate(inputName: string) {
         return (input: TextInputModalData) => input.customId === inputName;
@@ -141,6 +164,44 @@ export class LocalUtils {
         return matchingRoutes[0];
     };
 
+    public static execCurrRoute = async (
+        interaction:
+            | ButtonInteraction
+            | ModalSubmitInteraction
+            | AnySelectMenuInteraction,
+        client: Client,
+        customIdObj: CustomIdObj,
+        routes: Route[],
+        modalRespondingStages?: string[],
+    ) => {
+        const currRoute = LocalUtils.findCurrRoute(customIdObj, routes);
+        if (
+            customIdObj.secondaryAction === 'start' &&
+            customIdObj.stage === 'startRoleMenu' &&
+            !customIdObj.anythingElse.includes('back')
+        ) {
+            await interaction.deferReply({ ephemeral: true });
+        } else if (
+            !LocalUtils.isArrayEmpty(modalRespondingStages) &&
+            !modalRespondingStages.includes(currRoute.stage)
+        ) {
+            await interaction.deferUpdate();
+        }
+        if (currRoute === undefined) return;
+        else await currRoute.execute(interaction, client, customIdObj);
+        setTimeout(() => {
+            if (!interaction.replied) {
+                LocalUtils.log(
+                    'warn',
+                    `WARN - Interaction has not been replied to or updated after 1 minute. Did the interaction time out?\nRoute: ${LocalUtils.jsonString(
+                        currRoute,
+                        true,
+                    )}`,
+                );
+            }
+        }, 60 * 1000 /** 1 minute */);
+    };
+
     public static invalidCharacters = (
         objToCheck: Object,
         validRegExp: RegExp,
@@ -157,6 +218,7 @@ export class LocalUtils {
                 invalid: false,
             });
         });
+
         const filteredProps = props.filter(
             (prop) =>
                 objToCheck[prop].match(validRegExp) !== null ||

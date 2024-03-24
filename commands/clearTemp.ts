@@ -56,29 +56,33 @@ export async function execute(
         stage: undefined,
         anythingElse: [],
     };
-    const buttonRow = newButtonRow('tempData').setComponents([
-        new ButtonBuilder()
-            .setCustomId(
-                LocalUtils.buildCustomId({
-                    ...customIdObj,
-                    stage: 'actionConfirmed',
-                }),
-            )
-            .setLabel('Delete it all!')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId(
-                LocalUtils.buildCustomId({
-                    ...customIdObj,
-                    stage: 'nevermind',
-                }),
-            )
-            .setLabel('No, Get me out!')
-            .setStyle(ButtonStyle.Success),
-    ]);
+    const confirmButtonRow = newButtonRow(
+        'tempData',
+        [
+            new ButtonBuilder()
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        stage: 'actionConfirmed',
+                    }),
+                )
+                .setLabel('Delete it all!')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId(
+                    LocalUtils.buildCustomId({
+                        ...customIdObj,
+                        stage: 'nevermind',
+                    }),
+                )
+                .setLabel('No, Get me out!')
+                .setStyle(ButtonStyle.Success),
+        ],
+        false,
+    );
     return await interaction.editReply({
         content: '',
         embeds: [areYouSureEmbed],
-        components: [buttonRow],
+        components: [confirmButtonRow],
     });
 }

@@ -1,11 +1,4 @@
-import {
-    Client,
-    Guild,
-    GuildMember,
-    Interaction,
-    Role,
-    User,
-} from 'discord.js';
+import { Client, Guild, GuildMember, Interaction, Role } from 'discord.js';
 import { Globals } from './globals.js';
 import { LocalUtils } from './utils.js';
 
@@ -116,4 +109,83 @@ export function getRoleConfig(guildId: string) {
 
 export function getBotConfig(guildId: string) {
     return Globals.guildConfigs.guilds.get(guildId)?.botConfig;
+}
+
+export function getTotalRolesCount(
+    client: Client,
+    guildId: string,
+    includeAdminPerms: boolean = false,
+) {
+    const guildRoles = client.guilds.cache.get(guildId)?.roles.cache;
+    if (guildRoles === undefined) {
+        return 0;
+    }
+    let count = 0;
+    guildRoles.forEach((role) => {
+        if (includeAdminPerms) return count++;
+        if (!doesHaveAdminPerms(role)) return count++;
+    });
+    return count;
+}
+
+export function doesHaveAdminPerms(roleOrMember: Role | GuildMember) {
+    return (
+        roleOrMember.permissions.has('Administrator') ||
+        roleOrMember.permissions.has('ManageRoles') ||
+        roleOrMember.permissions.has('KickMembers') ||
+        roleOrMember.permissions.has('BanMembers') ||
+        roleOrMember.permissions.has('ManageGuild') ||
+        roleOrMember.permissions.has('ManageChannels') ||
+        roleOrMember.permissions.has('ManageEmojisAndStickers') ||
+        roleOrMember.permissions.has('ManageEvents') ||
+        roleOrMember.permissions.has('ManageGuildExpressions') ||
+        roleOrMember.permissions.has('ManageMessages') ||
+        roleOrMember.permissions.has('ManageNicknames') ||
+        roleOrMember.permissions.has('ManageThreads') ||
+        roleOrMember.permissions.has('ManageWebhooks')
+    );
+}
+
+export function getAdminPerms(roleOrMember: Role | GuildMember) {
+    let permsArray: string[] = [];
+    if (roleOrMember.permissions.has('Administrator')) {
+        return ['Administrator'];
+    }
+    roleOrMember.permissions.has('ManageRoles')
+        ? permsArray.push('ManageRoles')
+        : '';
+    roleOrMember.permissions.has('KickMembers')
+        ? permsArray.push('KickMembers')
+        : '';
+    roleOrMember.permissions.has('BanMembers')
+        ? permsArray.push('BanMembers')
+        : '';
+    roleOrMember.permissions.has('ManageGuild')
+        ? permsArray.push('ManageGuild')
+        : '';
+    roleOrMember.permissions.has('ManageChannels')
+        ? permsArray.push('ManageChannels')
+        : '';
+    roleOrMember.permissions.has('ManageEmojisAndStickers')
+        ? permsArray.push('ManageEmojisAndStickers')
+        : '';
+    roleOrMember.permissions.has('ManageEvents')
+        ? permsArray.push('ManageEvents')
+        : '';
+    roleOrMember.permissions.has('ManageGuildExpressions')
+        ? permsArray.push('ManageGuildExpressions')
+        : '';
+    roleOrMember.permissions.has('ManageMessages')
+        ? permsArray.push('ManageMessages')
+        : '';
+    roleOrMember.permissions.has('ManageNicknames')
+        ? permsArray.push('ManageNicknames')
+        : '';
+    roleOrMember.permissions.has('ManageThreads')
+        ? permsArray.push('ManageThreads')
+        : '';
+    roleOrMember.permissions.has('ManageWebhooks')
+        ? permsArray.push('ManageWebhooks')
+        : '';
+    return permsArray;
 }

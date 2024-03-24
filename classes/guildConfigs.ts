@@ -11,9 +11,8 @@ export class GuildConfigs {
         GuildConfig
     >();
 
-    private makePath = <Content extends string>(
-        guildId: Content,
-    ): `localData/${Content}/` => `localData/${guildId}/`;
+    private makePath = (guildId: string): `localData/${string}/` =>
+        `localData/${guildId}/`;
 
     constructor(client?: Client) {
         if (client === undefined) {
@@ -39,6 +38,14 @@ export class GuildConfigs {
             );
         });
     }
+
+    public getGuildConfig = (guildId: string) => this.guilds.get(guildId);
+
+    public getRoleConfig = (guildId: string) =>
+        this.guilds.get(guildId)?.roleConfig;
+
+    public getBotConfig = (guildId: string) =>
+        this.guilds.get(guildId)?.botConfig;
 }
 
 interface GuildConfig {

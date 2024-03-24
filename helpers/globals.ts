@@ -16,6 +16,7 @@ export class Globals {
         LocalUtils.log(
             'debug',
             stripIndents`
+        --------------------------------------------------------------------
         Interaction received:
         Created by - ${interaction.user.id} (${interaction.user.username})
         In Guild? - ${interaction.guildId} (${interaction.guild?.name})
@@ -23,11 +24,12 @@ export class Globals {
         ${
             interaction['customId'] !== undefined
                 ? `CustomId - ${interaction['customId']}`
-                : `${
-                      interaction.isAnySelectMenu()
-                          ? `Values - ${interaction.values.join(', ')}`
-                          : ''
-                  }`
+                : ''
+        }
+        ${
+            interaction.isAnySelectMenu()
+                ? `Values - ${interaction.values.join(', ')}`
+                : ''
         }
         `,
         );

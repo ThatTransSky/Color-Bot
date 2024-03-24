@@ -2,9 +2,57 @@
 
 (_Note: This changelog will only cover **meaningful** commits and changes_)
 
-## [Latest](https://github.com/That-TransGirl/Color-Bot/commit/24e8f14) - Dev Update (and some other stuff idk).
+## [Latest](https://github.com/ThatTransSky/Color-Bot/commit/master) - I lost so much sleep on this... (at least ManageRoles is almost done)
 
--   [HOTFIX](https://github.com/That-TransGirl/Color-Bot/commit/d35e5c71) - Removed a log that I forgot to delete lol.
+-   **IMPORTANT** - Adding and editing types is (mostly) finished! Only thing that's left is adding roles. (I know, I'm so _amazing_)
+-   New/Modified [`tempData`](./classes/tempData.ts) methods:
+    -   static `expiredDataResponse` - generic `Interaction` response when data gets expired.
+    -   static `typeToSavedData`, `editedTypeToSavedData` and `rolesToSavedData` - takes given data and returns it in a `SavedData.manageRoles` format.
+    -   `defaultExpire` and `defaultExpireAmount` are now static methods.
+    -   `checkExpire` and `updateFile` have been renamed to `checkExpireLoop` and `updateFileLoop`, respectively, for clarity.
+    -   `extendExpire` now returns the updated expire timestamp.
+    -   `updateSavedData` - Finds existing data using a given `Identifiers` object (returns false if not found) and updates its `SavedData`.
+    -   `addOrUpdateData` now returns the data back.
+    -   `getManageRolesData` - returns `DataObject.savedData.manageRoles`. (I know, I'm lazy)
+    -   `getTypeFromData` and `updateTypeFromData` - take a wild guess what these methods do. (also, don't look at the code. It's a mess, I'm aware.)
+    -   `removeData` now returns true/false based on whether the data existed before.
+    -   `instantFileUpdate` - instantly updates the local `tempData` file to avoid race conditions.
+-   `newButtonRow` (from [`componentBuilders`](./helpers/componentBuilders.ts)) now also takes an array of `ButtonBuilder`'s as a parameter.
+-   New `componentBuilder` method - `restartRoleMenuButtons`: Returns the buttons usually used at the end of an action, \
+    whether to restart to 'Choose Roles'/'Manage Roles'.
+    -   Important distinction: This method returns **`Array<ButtonBuilder>`**, rather than **`ActionRowBuilder<ButtonBuilder>`**.
+-   Did a lot of renaming for the sake of clarity (mostly `buttonRow` ---> whatever the row is being used for).
+-   Fixed a lot of formatting issues that came up on mobile specifically. (god knows why, the issues were so random)
+-   Removed a _bunch_ of `queueUpdate`'s from [`tempData`](./classes/tempData.ts). Like, a lot.
+-   Removed `getRoleByName` from `verifyStoredRoles` ([`roleConfig`](./classes/roleConfig.ts)) since verifying roles by name is unreliable. (If a stored role doesn't have an ID, it gets removed)
+-   New [`roleConfig`](./classes/roleConfig.ts) methods:
+    -   `findTypeIndex` - pretty straight forward, me thinks.
+    -   `getTotalTypelessRoles` - Return the amount of roles (given by parameter) are not attached to a type. (not counting roles with _any_ admin perms)
+    -   `isRoleInAnyType` - Similar to `getTotalTypelessRoles` just with a single role and returns true/false.
+    -   `editType` & `removeType` - come on, do I have to spell it out for you?
+-   Renamed `validateData` ---> `validateStoredTypes` and added more checks (that I am too lazy to document here, sue me).
+-   Added checks so if `minChoices` and/or `maxChoices` don't exist, set `multiRoleType` to false `rather` than `undefined`.
+-   Also, if `multiRoleType` is `false`, delete `minChoices` and `maxChoices`.
+-   New [`LocalUtils`](./helpers/utils.ts) methods:
+    -   `isStringEmpty` - same as `isArrayEmpty` but for strings. (revolutionary, I know)
+    -   `isStringSame` - takes two strings and returns true/false if they are the same. (if you couldn't tell)
+    -   `execCurrRoute` - takes care of the sorting and pre-responding to interactions instead of having it on file.
+-   New [`discordHelpers`](./helpers/discordHelpers.ts) methods:
+    -   `getTotalRolesCount` - returns the amount of roles in a given guild, with the option to include/exclude roles with admim perms.
+    -   `doesHaveAdminPerms` - takes a `Role` or `GuildMember` and returns true/false if it has _any_ admin perms.
+    -   `getAdminPerms` - takes a `Role` or `GuildMember` and returns an `Array<string>` of all the admin perms it has.
+-   Changed the `debug` log level's colors to alternate for more readability.
+-   Changed `Globals.logInteractionType`'s structure for more readability.
+-   The process now automatically catches unhandled errors and rejections.
+-   Discord's API limits select menus to 25 so had to implement that limit into codes.
+-   New [`guildConfigs`](./classes/guildConfigs.ts) methods:
+    -   `getGuildConfig`, `getRoleConfig` and `getBotConfig`. (I'm sure you can figure out what each method does)
+-   A bunch of rewrites (like, so much).
+-   Added a bunch more logs (mostly debug stuff).
+
+## [24e8f14](https://github.com/ThatTransSky/Color-Bot/commit/24e8f14) - Dev Update (and some other stuff idk).
+
+-   [HOTFIX](https://github.com/ThatTransSky/Color-Bot/commit/d35e5c71) - Removed a log that I forgot to delete lol.
 -   **FIXED** - `applyChanges` (in [`roleMenu`](./handlers/roleMenu.ts)) no longer errors (because I forgot to make the second action row have _actual buttons_).
 -   Renamed `GUILD_ID` to `MAIN_GUILD_ID`.
 -   Added another [Global](./helpers/globals.ts) variable - `DEV_GUILD_ID`:
@@ -23,7 +71,7 @@
 -   Modified the method `outputBypassList` (in [`GlobalBotConfig`](./classes/globalBotConfig.ts)) to not rely on `MAIN_GUILD_ID` and instead search for the users in the bypass list in each of the guilds that the bot is in.
 -   Also added a new method `bypassToString`, which is a WIP (because I'm lazy).
 
-## [69d40f5](https://github.com/That-TransGirl/Color-Bot/commit/69d40f5) - I really need to commit more often.
+## [69d40f5](https://github.com/ThatTransSky/Color-Bot/commit/69d40f5) - I really need to commit more often.
 
 -   Condensed every util function into one class - [`LocalUtils`](./helpers/utils.ts).
     -   Added new helper functions: `extractCustomId`, `isArrayEmpty`, `inputPredicate`, `findCurrRoute`, `invalidCharacters`.
@@ -46,7 +94,7 @@
 -   You can now create categories without editing `roleConfig.json` manually. (still a Work-In-Progress, I wanted to get this commit out)
 -   General rewrites & cleanups.
 
-## [901b65f](https://github.com/That-TransGirl/Color-Bot/commit/901b65f) - Role Menu is done (finally).
+## [901b65f](https://github.com/ThatTransSky/Color-Bot/commit/901b65f) - Role Menu is done (finally).
 
 -   **Finally** finished the role menu so it is fully functioning. All that I have really done \
     was move the 1,000+ lines to a seperate file ([`roleMenu.ts`](./handlers/roleMenu.ts)), with a few major (but mostly minor) changes and additions.
@@ -66,7 +114,7 @@
 -   Updated [`.gitignore`](./.gitignore) to include the _folder_ [`localData`](./localData) but exclude anything inside.
 -   I probably missed something (like I always do) 🤷‍♀️
 
-## [82e3161](https://github.com/That-TransGirl/Color-Bot/commit/82e3161) - This changelog (and other stuff).
+## [82e3161](https://github.com/ThatTransSky/Color-Bot/commit/82e3161) - This changelog (and other stuff).
 
 -   Created this changelog
 -   **Removed Role Menu Handling From `interactionCreate.ts`** - which means that, for now, the menu is not fully implemented yet. \
@@ -81,7 +129,7 @@
 -   Moved `mainAction`, `secondaryAction`, etc. to one object (called `customIdObj`). I don't know if I'm going to keep it this way but that's how it is for now.
 -   General rewrites and cleanups.
 
-## [a4380f5](https://github.com/That-TransGirl/Color-Bot/commit/a4380f5) - The start of a painful rewrite.
+## [a4380f5](https://github.com/ThatTransSky/Color-Bot/commit/a4380f5) - The start of a painful rewrite.
 
 -   Updated [`.gitignore`](./.gitignore).
 -   Added settings to [`.prettierrc`](./.prettierrc) to support uniform formatting.

@@ -6,6 +6,7 @@ import {
     ButtonStyle,
     ColorResolvable,
     EmbedBuilder,
+    PermissionsBitField,
     StringSelectMenuBuilder,
 } from 'discord.js';
 import { LocalUtils } from './utils.js';
@@ -28,13 +29,20 @@ export function backButton(customIdObj: CustomIdObj, previousStage?: string) {
             ...customIdObj,
             stage:
                 previousStage !== undefined ? previousStage : customIdObj.stage,
+            anythingElse: ['back'],
         }),
     );
 }
 
-export function newButtonRow(mainAction: string, withExit?: boolean) {
+export function newButtonRow(
+    mainAction: string,
+    components: ButtonBuilder[] = [],
+    withExit?: boolean,
+) {
     const row = new ActionRowBuilder<ButtonBuilder>();
-    withExit ? row.setComponents(exitButton(mainAction)) : row;
+    withExit
+        ? row.setComponents([...components, exitButton(mainAction)])
+        : row.setComponents(components);
     return row;
 }
 
@@ -108,6 +116,60 @@ export function nextPreviousAndCurrentButtons(
     return [nextButton, currentButton, previousButton];
 }
 
+export function restartRoleMenuButtons(
+    customIdObj: CustomIdObj,
+    memberPerms: PermissionsBitField,
+): ButtonBuilder[] {
+    return memberPerms.has('ManageRoles')
+        ? [
+              new ButtonBuilder()
+                  .setCustomId(
+                      LocalUtils.buildCustomId({
+                          ...customIdObj,
+                          secondaryAction: 'userRoles',
+                          stage: 'selectType',
+                          anythingElse: ['back'],
+                      }),
+                  )
+                  .setLabel('Restart: Choose Roles')
+                  .setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder()
+                  .setCustomId(
+                      LocalUtils.buildCustomId({
+                          ...customIdObj,
+                          stage: 'startMessage',
+                          anythingElse: ['back'],
+                      }),
+                  )
+                  .setLabel('Restart: Manage Roles')
+                  .setStyle(ButtonStyle.Secondary),
+          ]
+        : [
+              new ButtonBuilder()
+                  .setCustomId(
+                      LocalUtils.buildCustomId({
+                          ...customIdObj,
+                          secondaryAction: 'userRoles',
+                          stage: 'selectType',
+                          anythingElse: ['back'],
+                      }),
+                  )
+                  .setLabel('Restart: Choose Roles')
+                  .setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder()
+                  .setCustomId(
+                      LocalUtils.buildCustomId({
+                          ...customIdObj,
+                          stage: 'startMessage',
+                          anythingElse: ['back'],
+                      }),
+                  )
+                  .setLabel('Restart: Manage Roles')
+                  .setStyle(ButtonStyle.Secondary)
+                  .setDisabled(true),
+          ];
+}
+
 export function newEmbed(
     title: string,
     description: string,
@@ -130,18 +192,9 @@ export function newStringSelectMenuBuilderRow(
     options: Partial<APIStringSelectComponent>,
     customIdObj: CustomIdObj,
 ) {
-    const { anythingElse, mainAction, secondaryAction, stage } = customIdObj;
     return new ActionRowBuilder<StringSelectMenuBuilder>().setComponents([
         new StringSelectMenuBuilder(options).setCustomId(
-            `${mainAction}|${secondaryAction}${
-                stage
-                    ? `|${stage}${
-                          anythingElse.length !== 0
-                              ? `|${anythingElse.join('|')}`
-                              : ''
-                      }`
-                    : ''
-            }`,
+            LocalUtils.buildCustomId(customIdObj),
         ),
     ]);
 }

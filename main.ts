@@ -33,7 +33,7 @@ export async function main(callback?: (client: ClientWithCommands) => void) {
         ],
     });
     const client2 = client as ClientWithCommands;
-    LocalUtils.log(undefined, 'Loading client commands and events...');
+    LocalUtils.log('log', 'Loading client commands and events...');
     loadCommands(client2, () => {
         loadEvents(client2, () => {
             client2.login(process.env.TOKEN);
@@ -81,7 +81,12 @@ async function shouldEnableDebug(
         ac.abort();
     }, 10000);
 }
-
+process.on('uncaughtException', async (e, stack) => {
+    LocalUtils.log('error', `uncaughtException: ${e}\n${stack}`);
+});
+process.on('unhandledRejection', async (reason, promise) => {
+    LocalUtils.log('error', `unhandledRejection: ${reason}`);
+});
 /**
  ** The functions below control to purpose of running `npm start`
  ** shouldEnableDebug(main): Regular start, loads the bot

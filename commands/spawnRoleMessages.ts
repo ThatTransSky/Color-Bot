@@ -57,8 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             Press 'Start' whenever you're ready.
             `,
         );
-    const buttonRow = newButtonRow('roles');
-    buttonRow.setComponents([
+    const startRow = newButtonRow('roles', [
         new ButtonBuilder()
             .setCustomId(
                 LocalUtils.buildCustomId({
@@ -73,6 +72,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     ]);
     return await interaction.editReply({
         embeds: [startMessageEmbed],
-        components: [buttonRow],
+        components: [startRow],
     });
 }
